@@ -2,9 +2,12 @@ import PageBreadcrumb from "../common/PageBreadCrumb";
 import PageMeta from "../common/PageMeta";
 import ComponentCard from "../common/ComponentCard";
 import ReusableTable from "../common/ReusableTable";
-import { useState } from "react";
-import Pagination from "../pagination";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
+import { getUsers } from "../../services/user";
+import Pagination from "../pagination";
+import { IUser } from "../../interface/user";
+// import { PaginationApi } from "../../interface/pagination";
 
 const data = [
   {
@@ -102,14 +105,20 @@ const data = [
     ],
   },
 ];
+
+interface UsersProps {
+  totalPage: number;
+  data: IUser[];
+}
+
 const columns: { key: any; label: string }[] = [
   { key: "id", label: "ID" },
   { key: "username", label: "Tên người dùng" },
   { key: "phoneNumber", label: "Số điện thoại" },
   { key: "gender", label: "Giới tính" },
   { key: "email", label: "Email" },
-  { key: "avatar", label: "Avatar" },
-  { key: "background", label: "Ảnh bìa" },
+  // { key: "avatar", label: "Avatar" },
+  // { key: "background", label: "Ảnh bìa" },
   { key: "active", label: "Trạng thái" },
   { key: "createdAt", label: "Ngày tạo" },
   { key: "updatedAt", label: "Ngày cập nhật" },
@@ -118,17 +127,77 @@ export default function ManageUser() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [offset, setOffset] = useState(Number(searchParams.get("offset")) || 0);
   const [openModal, setOpenModal] = useState(false);
+
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [quantity, setQuantity] = useState(
-    Number(searchParams.get("quantity")) || 20
+    Number(searchParams.get("quantity")) || 5
   );
   // const [type, setType] = useState<ITypeNumber | undefined>(undefined);
   // const [types, setTypes] = useState<ITypeNumber[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorData, setErrorData] = useState("");
+  const [users, setUsers] = useState<UsersProps | undefined>(undefined);
+
+  // Set default value of quantity và offset if do not have
+  useEffect(() => {
+    if (!searchParams.get("limit") || !searchParams.get("offset")) {
+      setSearchParams((prev: any) => {
+        const newParams = new URLSearchParams(prev);
+        if (!newParams.get("limit")) newParams.set("limit", "5");
+        if (!newParams.get("offset")) newParams.set("offset", "0");
+        return newParams;
+      });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getUsers({
+        limit: quantity,
+        offset: offset,
+      });
+      setUsers(response);
+      if (response.data.length === 0) {
+        setError("Không có dữ liệu");
+      } else {
+        setError("");
+      }
+
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set("limit", quantity.toString());
+        newParams.set("offset", offset.toString());
+        return newParams;
+      });
+    } catch (error) {
+      const axiosError = error as Error;
+      setError(axiosError.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, quantity, offset]);
+  useEffect(() => {
+    setLoading(true);
+    setTimeout(() => {
+      fetchUsers()
+        .then(() => {
+          setLoading(false);
+        })
+        .catch((error) => {
+          setErrorData(error.message);
+          setLoading(false);
+        });
+    }, 1000);
+  }, [quantity, offset]);
 
   const onEdit = (item: any) => {};
   const onDelete = (id: string) => {};
+  // Handle Book Number
+  const getIds = (data: any) => {
+    setSelectedIds(data);
+  };
 
   return (
     <div className="">
@@ -141,11 +210,14 @@ export default function ManageUser() {
         <ReusableTable
           error={errorData}
           title="Danh sách số điện thoại"
-          data={data}
+          data={users?.data ?? []}
           columns={columns}
           onEdit={onEdit}
           onDelete={onDelete}
           isLoading={loading}
+          onCheck={(selectedIds) => getIds(selectedIds)}
+          setSelectedIds={setSelectedIds}
+          selectedIds={selectedIds}
           onEdit={(item) => {
             // setType(item);
             // setOpenModal(!openModal);
@@ -158,14 +230,14 @@ export default function ManageUser() {
         <Pagination
           limit={quantity}
           offset={offset}
-          totalPages={data?.total_pages ?? 1}
+          totalPages={users?.totalPage ?? 1}
           onPageChange={(limit, newOffset) => {
             setQuantity(limit);
             setOffset(newOffset);
           }}
           onLimitChange={(newLimit) => {
             setQuantity(newLimit);
-            setOffset(1);
+            setOffset(0); // Reset offset về 0 khi đổi limit
           }}
         />
       </ComponentCard>

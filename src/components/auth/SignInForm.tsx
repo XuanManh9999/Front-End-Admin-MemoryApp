@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
+import Cookies from "js-cookie";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
 import { useNavigate } from "react-router";
-
+import { apiLogin } from "../../services/auth";
+import { message } from "antd";
+import { getCurrentUser } from "../../services/user";
+import { Auth } from "../../interface/auth";
 export default function SignInForm() {
   const nav = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [dataLogin, setDataLogin] = useState({
+
+  const [dataLogin, setDataLogin] = useState<Auth>({
     username: "",
     password: "",
   });
-
   const handleOnChangeDataLogin = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setDataLogin((prev) => ({
@@ -22,7 +26,37 @@ export default function SignInForm() {
     }));
   };
 
-  const handleLoginAdmin = async () => {};
+  const handleLoginAdmin = async () => {
+    const { status, refreshToken, accessToken } = await apiLogin(dataLogin);
+    if (status === 200) {
+      // Set accessToken hết hạn trong 1 giờ
+      Cookies.set("accessToken", accessToken, { expires: 1 / 24 }); // 1 giờ = 1/24 ngày
+      // Set refreshToken hết hạn trong 1 ngày
+      Cookies.set("refreshToken", refreshToken, { expires: 1 }); // 1 ngày = 1 ngày
+
+      const { data, status: statusCurr } = await getCurrentUser();
+      console.log(data.roles[0].name);
+
+      if (statusCurr === 200 && data && data.roles[0].name === "ROLE_ADMIN") {
+        message.success("Đăng nhập thành công");
+        localStorage.setItem("user", JSON.stringify(data));
+        localStorage.setItem("isLogin", "true");
+        setTimeout(() => {
+          nav("/");
+        }, 1000);
+      } else {
+        message.error(
+          "Đăng nhập thất bại bạn không có quyền truy cập vào trang này"
+        );
+        Cookies.remove("accessToken");
+        Cookies.remove("refreshToken");
+      }
+    } else {
+      message.error(
+        "Đăng nhập không thành công vui lòng kiểm tra lại tài khoản và mật khẩu"
+      );
+    }
+  };
 
   return (
     <div className="flex flex-col flex-1">

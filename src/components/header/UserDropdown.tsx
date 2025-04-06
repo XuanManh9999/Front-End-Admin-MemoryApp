@@ -1,10 +1,23 @@
 import { useState } from "react";
+import Cookies from "js-cookie";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 export default function UserDropdown() {
+  const nav = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user") || "{}")
+  );
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("isLogin");
+    Cookies.remove("access_token");
+    Cookies.remove("refresh_token");
+    nav("/signin");
+  };
 
   function toggleDropdown() {
     setIsOpen(!isOpen);
@@ -19,7 +32,7 @@ export default function UserDropdown() {
         onClick={toggleDropdown}
         className="flex items-center text-gray-700 dropdown-toggle dark:text-gray-400">
         <span className="block mr-1 font-medium text-theme-sm">
-          Nguyễn Xuân Mạnh
+          {user?.username || "Admin"}
         </span>
         <svg
           className={`stroke-gray-500 dark:stroke-gray-400 transition-transform duration-200 ${
@@ -125,6 +138,7 @@ export default function UserDropdown() {
           </li>
         </ul> */}
         <Link
+          onClick={handleLogout}
           to="/signin"
           className="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300">
           <svg
@@ -141,7 +155,7 @@ export default function UserDropdown() {
               fill=""
             />
           </svg>
-          Sign out
+          Đăng xuất
         </Link>
       </Dropdown>
     </div>
