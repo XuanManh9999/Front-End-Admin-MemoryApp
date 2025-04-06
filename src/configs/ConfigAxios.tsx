@@ -1,10 +1,10 @@
 import axios from "axios";
 import Cookies from "js-cookie";
-const apiUser = axios.create({
+const configApi = axios.create({
   baseURL: "http://localhost:8080",
 });
 
-apiUser.interceptors.request.use(
+configApi.interceptors.request.use(
   async (config) => {
     const token = Cookies.get("accessToken");
     if (token) {
@@ -15,7 +15,7 @@ apiUser.interceptors.request.use(
   (err) => Promise.reject(err)
 );
 
-apiUser.interceptors.response.use(
+configApi.interceptors.response.use(
   (res) => res,
   async (err) => {
     const originalRequest = err.config;
@@ -54,15 +54,18 @@ apiUser.interceptors.response.use(
         });
 
         originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
-        return apiUser(originalRequest);
-      } catch (refreshErr) {
+        return configApi(originalRequest);
+      } catch (refreshErr: any) {
         localStorage.removeItem("persist:auth");
         Cookies.remove("accessToken");
         Cookies.remove("refreshToken");
-        if (refreshErr.response?.data?.detail === "JWT expired") {
+
+        const response = (refreshErr as any)?.response;
+
+        if (response?.data?.detail === "JWT expired") {
           alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
           document.location.href = "/login";
-        } else if (refreshErr?.status === 500) {
+        } else if (response?.status === 500) {
           alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
           document.location.href = "/login";
         }
@@ -75,4 +78,4 @@ apiUser.interceptors.response.use(
   }
 );
 
-export { apiUser };
+export { configApi };
