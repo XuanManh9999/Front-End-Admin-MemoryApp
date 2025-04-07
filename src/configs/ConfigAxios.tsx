@@ -6,7 +6,7 @@ const configApi = axios.create({
 
 configApi.interceptors.request.use(
   async (config) => {
-    const token = Cookies.get("accessToken");
+    const token = Cookies.get("accessTokenAdmin");
     if (token) {
       config.headers.Authorization = `Bearer ${token} `;
     }
@@ -23,7 +23,7 @@ configApi.interceptors.response.use(
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = Cookies.get("refreshToken");
+      const refreshToken = Cookies.get("refreshTokenAdmin");
 
       if (!refreshToken) {
         return Promise.reject(err);
@@ -62,16 +62,16 @@ configApi.interceptors.response.use(
           localStorage.removeItem("isLogin");
           localStorage.removeItem("persist:auth");
           localStorage.removeItem("user");
-          Cookies.remove("accessToken");
-          Cookies.remove("refreshToken");
+          Cookies.remove("accessTokenAdmin");
+          Cookies.remove("refreshTokenAdmin");
         } else if (response?.status === 500) {
           alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
           document.location.href = "/signin";
           localStorage.removeItem("isLogin");
           localStorage.removeItem("persist:auth");
           localStorage.removeItem("user");
-          Cookies.remove("accessToken");
-          Cookies.remove("refreshToken");
+          Cookies.remove("accessTokenAdmin");
+          Cookies.remove("refreshTokenAdmin");
         }
 
         return Promise.reject(refreshErr);

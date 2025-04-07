@@ -286,7 +286,7 @@ export default function ManageUser() {
         placeholder: "Nhập họ tên",
         rules: [
           { required: true, message: "Vui lòng vào họ tên!" },
-          { min: 6, message: "Tên tài khoản tối thiểu phải có 10 số" },
+          { min: 6, message: "Tên tài khoản tối thiểu phải có 6 chữ số" },
         ],
       },
       {

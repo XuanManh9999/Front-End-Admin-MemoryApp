@@ -30,9 +30,9 @@ export default function SignInForm() {
     const { status, refreshToken, accessToken } = await apiLogin(dataLogin);
     if (status === 200) {
       // Set accessToken hết hạn trong 1 giờ
-      Cookies.set("accessToken", accessToken, { expires: 1 / 24 }); // 1 giờ = 1/24 ngày
+      Cookies.set("accessTokenAdmin", accessToken, { expires: 1 / 24 }); // 1 giờ = 1/24 ngày
       // Set refreshToken hết hạn trong 1 ngày
-      Cookies.set("refreshToken", refreshToken, { expires: 1 }); // 1 ngày = 1 ngày
+      Cookies.set("refreshTokenAdmin", refreshToken, { expires: 1 }); // 1 ngày = 1 ngày
 
       const { data, status: statusCurr } = await getCurrentUser();
       console.log(data.roles[0].name);
@@ -48,8 +48,8 @@ export default function SignInForm() {
         message.error(
           "Đăng nhập thất bại bạn không có quyền truy cập vào trang này"
         );
-        Cookies.remove("accessToken");
-        Cookies.remove("refreshToken");
+        Cookies.remove("accessTokenAdmin");
+        Cookies.remove("refreshTokenAdmin");
       }
     } else {
       message.error(
