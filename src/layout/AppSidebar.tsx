@@ -37,18 +37,18 @@ const navItems: NavItem[] = [
     name: "Quản lý người dùng",
     path: "/manage-user",
   },
-  {
-    name: "Quản lý vai trò",
-    icon: <SiCriticalrole />,
-    path: "/manage-role",
-    // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
-  },
-  {
-    name: "Quản lý khóa học",
-    icon: <ListIcon />,
-    path: "/manage-course",
-    // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
-  },
+  // {
+  //   name: "Quản lý vai trò",
+  //   icon: <SiCriticalrole />,
+  //   path: "/manage-role",
+  //   // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
+  // },
+  // {
+  //   name: "Quản lý khóa học",
+  //   icon: <ListIcon />,
+  //   path: "/manage-course",
+  //   // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
+  // },
 
   // {
   //   name: "Tables",
@@ -86,14 +86,14 @@ const othersItems: NavItem[] = [
   //     { name: "Videos", path: "/videos", pro: false },
   //   ],
   // },
-  {
-    icon: <PlugInIcon />,
-    name: "Authentication",
-    subItems: [
-      { name: "Sign In", path: "/signin", pro: false },
-      // { name: "Sign Up", path: "/signup", pro: false },
-    ],
-  },
+  // {
+  //   icon: <PlugInIcon />,
+  //   name: "Authentication",
+  //   subItems: [
+  //     { name: "Sign In", path: "/signin", pro: false },
+  //     // { name: "Sign Up", path: "/signup", pro: false },
+  //   ],
+  // },
 ];
 
 const AppSidebar: React.FC = () => {
@@ -352,7 +352,7 @@ const AppSidebar: React.FC = () => {
               </h2>
               {renderMenuItems(navItems, "main")}
             </div>
-            <div className="">
+            {/* <div className="">
               <h2
                 className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
                   !isExpanded && !isHovered
@@ -366,7 +366,7 @@ const AppSidebar: React.FC = () => {
                 )}
               </h2>
               {renderMenuItems(othersItems, "others")}
-            </div>
+            </div> */}
           </div>
         </nav>
         {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null} */}

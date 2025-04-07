@@ -45,29 +45,33 @@ configApi.interceptors.response.use(
         if (!newAccessToken) {
           throw new Error("Không nhận được access token mới");
         }
-
-        Cookies.remove("accessToken");
-        // Xóa token cũ
-
-        Cookies.set("accessToken", newAccessToken, {
-          expires: 1 / 24, // Thời gian hết hạn là 1 giờ
-        });
+        if (newAccessToken) {
+          Cookies.set("accessToken", newAccessToken, {
+            expires: 1 / 24, // Thời gian hết hạn là 1 giờ
+          });
+        }
 
         originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
         return configApi(originalRequest);
       } catch (refreshErr: any) {
-        localStorage.removeItem("persist:auth");
-        Cookies.remove("accessToken");
-        Cookies.remove("refreshToken");
-
         const response = (refreshErr as any)?.response;
 
         if (response?.data?.detail === "JWT expired") {
           alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
-          document.location.href = "/login";
+          document.location.href = "/signin";
+          localStorage.removeItem("isLogin");
+          localStorage.removeItem("persist:auth");
+          localStorage.removeItem("user");
+          Cookies.remove("accessToken");
+          Cookies.remove("refreshToken");
         } else if (response?.status === 500) {
           alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
-          document.location.href = "/login";
+          document.location.href = "/signin";
+          localStorage.removeItem("isLogin");
+          localStorage.removeItem("persist:auth");
+          localStorage.removeItem("user");
+          Cookies.remove("accessToken");
+          Cookies.remove("refreshToken");
         }
 
         return Promise.reject(refreshErr);

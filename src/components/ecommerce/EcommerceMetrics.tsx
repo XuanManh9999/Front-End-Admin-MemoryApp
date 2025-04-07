@@ -6,7 +6,25 @@ import {
 } from "../../icons";
 import Badge from "../ui/badge/Badge";
 
+import { getDashboard } from "../../services/user";
+import { useEffect, useState } from "react";
+
 export default function EcommerceMetrics() {
+  const [dataDashboard, setDataDashboard] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await getDashboard();
+        setDataDashboard(response);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6">
       {/* <!-- Metric Item Start --> */}
@@ -18,10 +36,10 @@ export default function EcommerceMetrics() {
         <div className="flex items-end justify-between mt-5">
           <div>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Tổng số tài khoản trong hệ thống
+              Tổng số người dùng trong hệ thống
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              3,782
+              {dataDashboard?.quantity_users || 0}
             </h4>
           </div>
           {/* <Badge color="success">
@@ -40,20 +58,14 @@ export default function EcommerceMetrics() {
         <div className="flex items-end justify-between mt-5">
           <div>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Orders
+              Tổng số files trong hệ thống
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              5,359
+              {dataDashboard?.quantity_file || 0}
             </h4>
           </div>
-
-          <Badge color="error">
-            <ArrowDownIcon />
-            9.05%
-          </Badge>
         </div>
       </div>
-      {/* <!-- Metric Item End --> */}
     </div>
   );
 }
