@@ -7,7 +7,7 @@ export default function SignIn() {
     <>
       <PageMeta
         title="Đăng nhập"
-        description="Đăng nhập vào hệ thống quản lý học tập"
+        description="Đăng nhập vào hệ thống quản lý tài nguyên đồ họa"
       />
       <AuthLayout>
         <SignInForm />

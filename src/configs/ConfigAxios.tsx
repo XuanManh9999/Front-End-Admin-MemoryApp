@@ -1,7 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 const configApi = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: "http://localhost:3000",
 });
 
 configApi.interceptors.request.use(
@@ -31,7 +31,7 @@ configApi.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          "http://localhost:8080/auth/refresh",
+          "http://localhost:3000",
           {},
           {
             headers: {

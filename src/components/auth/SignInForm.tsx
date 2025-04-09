@@ -35,7 +35,6 @@ export default function SignInForm() {
       Cookies.set("refreshTokenAdmin", refreshToken, { expires: 1 }); // 1 ngày = 1 ngày
 
       const { data, status: statusCurr } = await getCurrentUser();
-      console.log(data.roles[0].name);
 
       if (statusCurr === 200 && data && data.roles[0].name === "ROLE_ADMIN") {
         message.success("Đăng nhập thành công");
