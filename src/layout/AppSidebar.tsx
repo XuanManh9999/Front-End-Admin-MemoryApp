@@ -18,7 +18,8 @@ import {
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 import { SiCriticalrole } from "react-icons/si";
-import { MdOutlineLogin } from "react-icons/md";
+import { MdOutlineLogin, MdPayments } from "react-icons/md";
+import { TbReportAnalytics } from "react-icons/tb";
 type NavItem = {
   name: string;
   icon?: React.ReactNode;
@@ -32,7 +33,6 @@ const navItems: NavItem[] = [
     name: "Dashboard",
     subItems: [{ name: "Tổng quan", path: "/", pro: false }],
   },
-
   {
     icon: <UserCircleIcon />,
     name: "Quản lý người dùng",
@@ -41,27 +41,27 @@ const navItems: NavItem[] = [
   {
     name: "Quản lý tài nguyên",
     icon: <SiCriticalrole />,
-    path: "/manage-role",
+    path: "/manage-resource",
     // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
   },
   {
     name: "Quản lý danh mục",
     icon: <ListIcon />,
-    path: "/manage-course",
+    path: "/manage-folder",
     // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
   },
   {
-    name: "Đăng xuất",
-    icon: <MdOutlineLogin />,
-    path: "/signin",
+    name: "Quản lý thanh toán",
+    icon: <MdPayments />,
+    path: "/manage-payment",
     // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
   },
-  // {
-  //   name: "Quản lý khóa học",
-  //   icon: <ListIcon />,
-  //   path: "/manage-course",
-  //   // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
-  // },
+  {
+    name: "Báo cáo thống kê",
+    icon: <TbReportAnalytics />,
+    path: "/manage-report",
+    // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
+  },
 
   // {
   //   name: "Tables",
@@ -76,6 +76,12 @@ const navItems: NavItem[] = [
   //     { name: "404 Error", path: "/error-404", pro: false },
   //   ],
   // },
+  {
+    name: "Đăng xuất",
+    icon: <MdOutlineLogin />,
+    path: "/signin",
+    // subItems: [{ name: "Form Elements", path: "/blank", pro: false }],
+  },
 ];
 
 const othersItems: NavItem[] = [

@@ -6,7 +6,7 @@ import {
 } from "../../icons";
 import Badge from "../ui/badge/Badge";
 
-import { getDashboard } from "../../services/user";
+// import { getDashboard } from "../../services/user";
 import { useEffect, useState } from "react";
 
 export default function EcommerceMetrics() {

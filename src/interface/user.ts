@@ -13,5 +13,8 @@ export interface IUser {
   active: string;
   createdAt: string;
   updatedAt: string;
-  roles: IRole[];
+  roles?: IRole[];
+  role?: string | null;
+  username_admin?: string | null;
+  status?: number;
 }
