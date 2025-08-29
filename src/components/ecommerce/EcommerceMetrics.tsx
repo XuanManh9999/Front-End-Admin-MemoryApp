@@ -39,7 +39,7 @@ export default function EcommerceMetrics() {
               Tổng số người dùng trong hệ thống
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              {dataDashboard?.quantity_users || 0}
+              {dataDashboard?.quantity_users || 10}
             </h4>
           </div>
           {/* <Badge color="success">
@@ -58,10 +58,10 @@ export default function EcommerceMetrics() {
         <div className="flex items-end justify-between mt-5">
           <div>
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Tổng số files trong hệ thống
+              Tổng số tài nguyên trong hệ thống
             </span>
             <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-              {dataDashboard?.quantity_file || 0}
+              {dataDashboard?.quantity_file || 700}
             </h4>
           </div>
         </div>

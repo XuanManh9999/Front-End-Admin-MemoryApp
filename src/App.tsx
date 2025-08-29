@@ -22,7 +22,9 @@ import ManageUser from "./components/manage_user";
 import ManageFolder from "./components/manage_folder";
 import ManageResource from "./components/manage_resource";
 import ManageReport from "./components/manage_report";
-
+import ManageTag from "./components/manage_tag";
+import ManageCategory from "./components/manage_category";
+import ManageCollection from "./components/manage_collection";
 export default function App() {
   return (
     <>
@@ -36,7 +38,9 @@ export default function App() {
             <Route path="/manage-folder" element={<ManageFolder />} />
             <Route path="/manage-resource" element={<ManageResource />} />
             <Route path="/manage-report" element={<ManageReport />} />
-
+            <Route path="/manage-tag" element={<ManageTag />} />
+            <Route path="/manage-category" element={<ManageCategory />} />
+            <Route path="/manage-collection" element={<ManageCollection />} />
             {/* Others Page */}
             {/* <Route path="/profile" element={<UserProfiles />} />
             {/* Others Page */}

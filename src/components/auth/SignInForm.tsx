@@ -29,11 +29,12 @@ export default function SignInForm() {
   const handleLoginAdmin = async () => {
     const {
       status,
-      data: { assessToken, refreshToken },
+      data
     } = await apiLogin(dataLogin);
+
     if (status === 200) {
-      Cookies.set("accessTokenAdmin", assessToken, { expires: 1 / 24 });
-      Cookies.set("refreshTokenAdmin", refreshToken, { expires: 1 });
+      Cookies.set("accessTokenAdmin", data.assessToken, { expires: 1 / 24 });
+      Cookies.set("refreshTokenAdmin", data.refreshToken, { expires: 1 });
       message.success("Đăng nhập thành công");
       setTimeout(() => {
         nav("/");

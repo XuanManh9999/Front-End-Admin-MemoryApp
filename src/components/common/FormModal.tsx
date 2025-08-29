@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
-import { Form, Input, Button, Upload, Modal, Select, Checkbox } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import React, { useEffect, useState } from "react";
+import { Form, Input, Button, Upload, Modal, Select, Checkbox, Image } from "antd";
+import { PlusOutlined, EyeOutlined } from "@ant-design/icons";
+import type { UploadProps } from "antd";
 
 interface Field {
   name: string;
@@ -22,6 +23,9 @@ interface Field {
   maxLength?: number;
   readOnly?: boolean;
   disabled?: boolean;
+  uploadProps?: UploadProps;
+  previewImage?: string;
+  allowClear?: boolean;
 }
 
 interface FormModalProps {
@@ -46,24 +50,57 @@ const FormModal: React.FC<FormModalProps> = ({
   cancelText = "Đóng",
 }) => {
   const [form] = Form.useForm();
+  const [currentPreviewImages, setCurrentPreviewImages] = useState<Record<string, string>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      // Cập nhật giá trị của các trường khi modal mở
-      const initialValues = formFields.reduce((values, field: Field) => {
-        values[field.name] = field.initialValue || "";
+    if (isOpen && !isInitialized) {
+      // Chỉ set initial values khi modal vừa mở lần đầu
+      const initialValues = formFields.reduce((values: Record<string, any>, field: Field) => {
+        if (field.type !== "upload") {
+          values[field.name] = field.initialValue || "";
+        }
         return values;
       }, {});
       form.setFieldsValue(initialValues);
-    } else {
-      // Reset các trường khi modal đóng
+      setIsInitialized(true);
+
+      // Cập nhật preview images
+      const previewImages = formFields.reduce((images: Record<string, string>, field: Field) => {
+        if (field.type === "upload" && field.previewImage) {
+          images[field.name] = field.previewImage;
+        }
+        return images;
+      }, {});
+      setCurrentPreviewImages(previewImages);
+    } else if (!isOpen) {
+      // Reset form khi modal đóng
       form.resetFields();
+      setCurrentPreviewImages({});
+      setIsInitialized(false);
     }
-  }, [isOpen, formFields, form]);
+  }, [isOpen, form, isInitialized]);
+
+  // Chỉ cập nhật preview images khi formFields thay đổi, không động vào form values
+  useEffect(() => {
+    if (isOpen && isInitialized) {
+      const previewImages = formFields.reduce((images: Record<string, string>, field: Field) => {
+        if (field.type === "upload" && field.previewImage) {
+          images[field.name] = field.previewImage;
+        }
+        return images;
+      }, {});
+      setCurrentPreviewImages(prev => ({
+        ...prev,
+        ...previewImages
+      }));
+    }
+  }, [formFields, isOpen, isInitialized]);
 
   const onFinish = (values: any) => {
     if (onSubmit) onSubmit(values);
   };
+
   const renderField = (field: Field) => {
     const validationRules = [];
 
@@ -80,14 +117,54 @@ const FormModal: React.FC<FormModalProps> = ({
           />
         );
       case "upload":
+        const currentPreview = currentPreviewImages[field.name] || field.previewImage;
         return (
-          <Upload beforeUpload={() => false} multiple listType="text">
-            <Button icon={<UploadOutlined />}>Chọn file</Button>
-          </Upload>
+          <div className="flex flex-col gap-2">
+            <Upload
+              listType="picture-card"
+              className="avatar-uploader"
+              showUploadList={true}
+              maxCount={1}
+              {...field.uploadProps}
+            >
+              {currentPreview ? (
+                <div className="relative w-full h-full group">
+                  <img
+                    src={currentPreview}
+                    alt="preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-white">Thay đổi</span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <PlusOutlined />
+                  <div style={{ marginTop: 8 }}>Tải lên</div>
+                </div>
+              )}
+            </Upload>
+            {currentPreview && (
+              <Button 
+                type="link" 
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  window.open(currentPreview, '_blank');
+                }}
+                className="p-0"
+              >
+                Xem ảnh
+              </Button>
+            )}
+          </div>
         );
       case "select":
         return (
-          <Select placeholder={field.placeholder}>
+          <Select 
+            placeholder={field.placeholder}
+            allowClear={field.allowClear}
+          >
             {field.options?.map((option) => (
               <Select.Option key={option.value} value={option.value}>
                 {option.label}
@@ -131,9 +208,28 @@ const FormModal: React.FC<FormModalProps> = ({
           <Form.Item
             key={field.name}
             name={field.name}
-            valuePropName={field.type === "checkbox-group" ? "value" : "value"}
+            valuePropName={
+              field.type === "checkbox-group" 
+                ? "value" 
+                : field.type === "upload" 
+                  ? "fileList" 
+                  : "value"
+            }
+            getValueFromEvent={
+              field.type === "upload" 
+                ? (e) => {
+                    console.log('getValueFromEvent:', e);
+                    if (Array.isArray(e)) {
+                      return e;
+                    }
+                    return e && e.fileList;
+                  }
+                : undefined
+            }
             initialValue={
-              field.initialValue || (field.type === "checkbox-group" ? [] : "")
+              field.initialValue || 
+              (field.type === "checkbox-group" ? [] : 
+               field.type === "upload" ? [] : "")
             }
             label={
               field.type !== "checkbox" ? (
@@ -142,7 +238,6 @@ const FormModal: React.FC<FormModalProps> = ({
                 </label>
               ) : null
             }
-            // rules={renderField(field).props.rules || []} // Áp dụng các quy tắc xác thực
             rules={field.rules || renderField(field).props.rules}
             className="mb-4">
             {renderField(field)}

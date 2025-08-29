@@ -14,10 +14,6 @@ import { IoIosAdd } from "react-icons/io";
 import { Input, message } from "antd";
 import Label from "../form/Label";
 
-// getRoles,
-// getUserByName
-
-// import { PaginationApi } from "../../interface/pagination";
 
 interface UsersProps {
   totalPage: number;
@@ -118,17 +114,6 @@ export default function ManageUser() {
   }, [quantity, offset]);
 
   const onEdit = async (item: IUser) => {
-    // const response = await getRoles();
-    // const roleIds = response?.data?.map((role: any) => {
-    //   return {
-    //     label: role.name,
-    //     value: role.id,
-    //   };
-    // });
-    // const roles_user = item?.roles?.map((role: any) => {
-    //   return role.id;
-    // });
-
     setFormFields(() => {
       const form = [
         {
@@ -326,8 +311,8 @@ export default function ManageUser() {
     <>
       <div className="">
         <PageMeta
-          title="React.js Blank Dashboard | TailAdmin - Next.js Admin Dashboard Template"
-          description="This is React.js Blank Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+          title="Quản lý người dùng"
+          description="Quản lý người dùng của hệ thống"
         />
         <PageBreadcrumb pageTitle="Quản lý người dùng" />
         <div className="flex justify-end mb-4">

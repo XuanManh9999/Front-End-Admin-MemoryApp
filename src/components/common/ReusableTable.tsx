@@ -24,11 +24,13 @@ interface Props<T> {
   columns: {
     key: keyof T;
     label: string;
+    render?: (value: any, record: T) => React.ReactNode;
   }[];
   onEdit?: (item: T) => void;
   onDelete?: (id: string | number) => void;
   actions?: Action<T>[];
-  onCheck?: (selectedIds: (string | number)[], selectedRows: T[]) => void; // Sửa đổi onCheck
+  customActions?: (item: T) => React.ReactNode;
+  onCheck?: (selectedIds: (string | number)[], selectedRows: T[]) => void;
   selectedIds?: (string | number)[];
   setSelectedIds?: React.Dispatch<React.SetStateAction<number[]>>;
   isLoading: boolean;
@@ -41,13 +43,14 @@ const ReusableTable = <T extends { id: string | number }>({
   onEdit,
   onDelete,
   actions = [],
+  customActions,
   onCheck,
   selectedIds,
   setSelectedIds,
   isLoading = false,
   error = "",
 }: Props<T>) => {
-  const hasActionColumn = onEdit || onDelete || actions.length > 0;
+  const hasActionColumn = onEdit || onDelete || actions.length > 0 || customActions;
 
   const handleSelectAll = () => {
     if (!setSelectedIds) return;
@@ -174,7 +177,7 @@ const ReusableTable = <T extends { id: string | number }>({
                       <TableCell
                         key={col.key as string}
                         className="px-5 py-3 text-sm text-gray-500 dark:text-gray-300">
-                        {item[col.key] as string}
+                        {col.render ? col.render(item[col.key], item) : item[col.key] as string}
                       </TableCell>
                     ))}
                     {hasActionColumn && (
@@ -212,6 +215,7 @@ const ReusableTable = <T extends { id: string | number }>({
                               {action.icon}
                             </button>
                           ))}
+                        {customActions && customActions(item)}
                       </TableCell>
                     )}
                   </TableRow>
