@@ -12,7 +12,8 @@ export interface Resource {
   detail?: string;
   file?: File;
   collection_id: number; // Required for creation
-  tag_id: number; // Required for creation
+  tag_id: number; // Required for creation - primary tag
+  additional_tag_ids?: number[]; // Optional - additional tags
 }
 
 export interface ResourceUpdate {
@@ -70,25 +71,66 @@ export const createResource = async (resource: Resource) => {
   try {
     const formData = new FormData();
     
+    // Validate required fields
+    if (!resource.title) throw new Error('Tiêu đề là bắt buộc');
+    if (!resource.category_id) throw new Error('Danh mục là bắt buộc');
+    if (!resource.plan) throw new Error('Gói là bắt buộc');
+    if (!resource.tag_id) throw new Error('Tag là bắt buộc');
+    if (!resource.collection_id) throw new Error('Bộ sưu tập là bắt buộc');
+    if (!resource.file) throw new Error('File là bắt buộc');
+
     // Xử lý từng field riêng biệt
-    if (resource.title) formData.append('title', resource.title);
+    formData.append('title', resource.title);
     if (resource.description) formData.append('description', resource.description);
-    if (resource.category_id) formData.append('category_id', resource.category_id.toString());
-    if (resource.plan) formData.append('plan', resource.plan);
+    formData.append('category_id', resource.category_id.toString());
+    formData.append('plan', resource.plan);
     if (resource.detail) formData.append('detail', resource.detail);
-    if (resource.tag_id) formData.append('tag_id', resource.tag_id.toString());
-    if (resource.collection_id) formData.append('collection_id', resource.collection_id.toString());
+    formData.append('tag_id', resource.tag_id.toString());
+    formData.append('collection_id', resource.collection_id.toString());
     
-    // Xử lý file riêng biệt
-    if (resource.file) {
-      console.log('File being uploaded:', resource.file);
+    // Thêm additional tags nếu có
+    if (resource.additional_tag_ids && resource.additional_tag_ids.length > 0) {
+      formData.append('additional_tag_ids', JSON.stringify(resource.additional_tag_ids));
+    }
+    
+    // Xử lý file và auto-detect file_type
+    if (resource.file instanceof File) {
+      console.log('File being uploaded:', {
+        name: resource.file.name,
+        type: resource.file.type,
+        size: resource.file.size
+      });
+      
+      // Auto-detect file_type từ file extension hoặc MIME type
+      const fileExtension = resource.file.name.split('.').pop()?.toLowerCase();
+      let detectedFileType = 'other';
+      
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension || '')) {
+        detectedFileType = 'image';
+      } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(fileExtension || '')) {
+        detectedFileType = 'video';
+      } else if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(fileExtension || '')) {
+        detectedFileType = 'audio';
+      } else if (['pdf'].includes(fileExtension || '')) {
+        detectedFileType = 'pdf';
+      } else if (['doc', 'docx', 'txt', 'rtf'].includes(fileExtension || '')) {
+        detectedFileType = 'document';
+      } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension || '')) {
+        detectedFileType = 'archive';
+      }
+      
       formData.append('file', resource.file);
+      formData.append('file_type', detectedFileType);
+      
+      console.log('Detected file type:', detectedFileType);
+    } else {
+      throw new Error('File không hợp lệ');
     }
 
     // Log FormData để debug
     console.log('FormData entries:');
     for (let pair of formData.entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
+      console.log(pair[0] + ': ' + (pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]));
     }
 
     const response = await configApi.post(`/admin/manage-resource/create`, formData, {
@@ -96,10 +138,23 @@ export const createResource = async (resource: Resource) => {
         "Content-Type": "multipart/form-data",
       },
     });
+    
+    console.log('Create resource response:', response?.data);
     return response?.data;
   } catch (error) {
     console.error('Create resource error:', error);
-    return (error as AxiosError)?.response?.data;
+    const axiosError = error as AxiosError;
+    
+    if (axiosError.response?.data) {
+      return axiosError.response.data;
+    }
+    
+    // Fallback error response
+    return {
+      statusCode: 500,
+      message: axiosError.message || 'Lỗi không xác định khi tạo tài nguyên',
+      error: axiosError.message
+    };
   }
 };
 
@@ -116,9 +171,35 @@ export const updateResource = async (id: number, resource: ResourceUpdate) => {
     if (resource.status !== undefined) formData.append('status', resource.status);
     
     // Xử lý file riêng biệt
-    if (resource.file) {
-      console.log('File being updated:', resource.file);
+    if (resource.file instanceof File) {
+      console.log('File being updated:', {
+        name: resource.file.name,
+        type: resource.file.type,
+        size: resource.file.size
+      });
+      
+      // Auto-detect file_type từ file extension
+      const fileExtension = resource.file.name.split('.').pop()?.toLowerCase();
+      let detectedFileType = 'other';
+      
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension || '')) {
+        detectedFileType = 'image';
+      } else if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(fileExtension || '')) {
+        detectedFileType = 'video';
+      } else if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(fileExtension || '')) {
+        detectedFileType = 'audio';
+      } else if (['pdf'].includes(fileExtension || '')) {
+        detectedFileType = 'pdf';
+      } else if (['doc', 'docx', 'txt', 'rtf'].includes(fileExtension || '')) {
+        detectedFileType = 'document';
+      } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension || '')) {
+        detectedFileType = 'archive';
+      }
+      
       formData.append('file', resource.file);
+      formData.append('file_type', detectedFileType);
+      
+      console.log('Updated file type:', detectedFileType);
     }
 
     // Xử lý arrays
@@ -143,7 +224,18 @@ export const updateResource = async (id: number, resource: ResourceUpdate) => {
     return response?.data;
   } catch (error) {
     console.error('Update resource error:', error);
-    return (error as AxiosError)?.response?.data;
+    const axiosError = error as AxiosError;
+    
+    if (axiosError.response?.data) {
+      return axiosError.response.data;
+    }
+    
+    // Fallback error response
+    return {
+      statusCode: 500,
+      message: axiosError.message || 'Lỗi không xác định khi cập nhật tài nguyên',
+      error: axiosError.message
+    };
   }
 };
 

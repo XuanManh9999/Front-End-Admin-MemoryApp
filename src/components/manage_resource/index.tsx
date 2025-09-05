@@ -4,7 +4,7 @@ import ComponentCard from "../common/ComponentCard";
 import ReusableTable from "../common/ReusableTable";
 import { useCallback, useEffect, useState, KeyboardEvent } from "react";
 import { useSearchParams } from "react-router";
-import { Input, message, Select } from "antd";
+import { Input, message, Select, Upload } from "antd";
 import Pagination from "../pagination";
 import Label from "../form/Label";
 import { IoIosAdd } from "react-icons/io";
@@ -27,29 +27,23 @@ interface ResourcesResponse {
   statusCode: number;
   message: string;
   data: {
-    resources: {
-      resources: any[];
-      pagination: {
-        currentPage: number;
-        totalPages: number;
-        totalResources: number;
-        limit: number;
-        hasNextPage: boolean;
-        hasPrevPage: boolean;
-      };
-      filters: {
-        search: string;
-        category_id: number | null;
-        file_type: string;
-        collection_id: number | null;
-        tag_id: number | null;
-        status: string;
-        plan: string;
-      };
-    };
+    resources: any[];
     pagination: {
-      page: number;
+      currentPage: number;
+      totalPages: number;
+      totalResources: number;
       limit: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+    filters: {
+      search: string;
+      category_id: number | null;
+      file_type: string;
+      collection_id: number | null;
+      tag_id: number | null;
+      status: string;
+      plan: string;
     };
   };
 }
@@ -129,11 +123,15 @@ export default function ManageResource() {
       );
 
 
-      // Check if response has data - cấu trúc mới
-      if (!response?.data?.resources?.resources || response.data.resources.resources.length === 0) {
+      // Check if response has data - cấu trúc backend hiện tại
+      console.log("Response data structure:", response?.data);
+      console.log("Resources array:", response?.data?.resources);
+      
+      if (!response?.data?.resources || response.data.resources.length === 0) {
         setErrorData("Không có dữ liệu");
       } else {
         setErrorData("");
+        console.log("Found", response.data.resources.length, "resources");
       }
       setResources(response);
 
@@ -228,13 +226,30 @@ export default function ManageResource() {
         const isLt50M = file.size / 1024 / 1024 < 50;
         if (!isLt50M) {
           message.error('Tệp tin phải nhỏ hơn 50MB!');
-          return false;
+          return Upload.LIST_IGNORE;
         }
         
-        console.log('File selected:', file);
-        return false; // Prevent automatic upload
+        // Validate file type
+        const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'zip', 'rar', '7z'];
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        
+        if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+          message.error(`Loại file không được hỗ trợ! Chỉ chấp nhận: ${allowedExtensions.join(', ')}`);
+          return Upload.LIST_IGNORE;
+        }
+        
+        message.success(`Đã chọn file: ${file.name}`);
+        return false; // Prevent automatic upload, we'll handle it manually
       },
-      accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.mp4,.mp3,.zip,.rar",
+      onChange: (info: any) => {
+        if (info.fileList.length > 0) {
+          const file = info.fileList[0];
+          if (file.status === 'error') {
+            message.error('Lỗi khi chọn file!');
+          }
+        }
+      },
+      accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.avi,.mov,.mp3,.wav,.zip,.rar,.7z",
     };
 
     setFormFieldsAdd([
@@ -284,16 +299,27 @@ export default function ManageResource() {
         label: "Tệp tin",
         type: "upload",
         uploadProps,
-        rules: [{ required: true, message: "Vui lòng chọn tệp tin!" }],
+        rules: [
+          { 
+            required: true, 
+            message: "Vui lòng chọn tệp tin!",
+            validator: (_: any, value: any) => {
+              if (!value || (Array.isArray(value) && value.length === 0)) {
+                return Promise.reject(new Error("Vui lòng chọn tệp tin!"));
+              }
+              return Promise.resolve();
+            }
+          }
+        ],
       },
       {
-        name: "tag_id",
+        name: "tag_ids",
         label: "Thẻ",
-        type: "select",
-        placeholder: "Chọn thẻ",
+        type: "multiselect",
+        placeholder: "Chọn một hoặc nhiều thẻ",
         options: tags,
         allowClear: true,
-        rules: [{ required: true, message: "Vui lòng chọn thẻ!" }],
+        rules: [{ required: true, message: "Vui lòng chọn ít nhất một thẻ!" }],
       },
       {
         name: "collection_id",
@@ -310,29 +336,61 @@ export default function ManageResource() {
   const handleAddResource = async (data: any) => {
     setLoading(true);
     try {
-      console.log("Form data received:", data);
-      
-      // Kiểm tra file - Antd Upload trả về fileList
+      // Xử lý file từ Antd Upload - data.file sẽ là fileList array
       let fileToUpload = null;
+      
       if (data.file && Array.isArray(data.file) && data.file.length > 0) {
         // data.file là fileList từ Antd Form
-        fileToUpload = data.file[0].originFileObj || data.file[0];
-      } else if (data.file && data.file.fileList && data.file.fileList.length > 0) {
-        // Fallback nếu có nested structure
-        fileToUpload = data.file.fileList[0].originFileObj;
-      } else if (data.file && data.file.file) {
-        fileToUpload = data.file.file;
-      } else if (data.file instanceof File) {
-        fileToUpload = data.file;
+        const fileItem = data.file[0];
+        fileToUpload = fileItem.originFileObj || fileItem.file || fileItem;
       }
 
-      console.log("File to upload:", fileToUpload);
-
-      if (!fileToUpload) {
-        message.error("Vui lòng chọn tệp tin!");
+      if (!fileToUpload || !(fileToUpload instanceof File)) {
+        message.error("Vui lòng chọn tệp tin hợp lệ!");
+        setLoading(false);
         return;
       }
-
+      
+      // Validate required fields
+      if (!data.title) {
+        message.error("Vui lòng nhập tiêu đề!");
+        setLoading(false);
+        return;
+      }
+      
+      if (!data.category_id) {
+        message.error("Vui lòng chọn danh mục!");
+        setLoading(false);
+        return;
+      }
+      
+      if (!data.plan) {
+        message.error("Vui lòng chọn gói!");
+        setLoading(false);
+        return;
+      }
+      
+      // Debug form data
+      console.log("Form data received:", data);
+      console.log("Available tags:", tags);
+      console.log("Available collections:", collections);
+      
+      // Xử lý tag_ids - lấy tag đầu tiên nếu là array, hoặc giá trị đơn
+      const primaryTagId = Array.isArray(data.tag_ids) ? data.tag_ids[0] : data.tag_ids;
+      console.log("Primary tag ID:", primaryTagId);
+      
+      if (!primaryTagId) {
+        message.error("Vui lòng chọn ít nhất một thẻ!");
+        setLoading(false);
+        return;
+      }
+      
+      if (!data.collection_id) {
+        message.error("Vui lòng chọn bộ sưu tập!");
+        setLoading(false);
+        return;
+      }
+      
       const resourceData: Resource = {
         title: data.title,
         description: data.description,
@@ -340,19 +398,26 @@ export default function ManageResource() {
         plan: data.plan,
         detail: data.detail,
         file: fileToUpload,
-        tag_id: data.tag_id,
-        collection_id: data.collection_id, // Thêm collection_id vì API yêu cầu
+        tag_id: primaryTagId, // API backend vẫn cần tag_id đơn
+        collection_id: data.collection_id,
       };
+      
+      // Thêm thông tin về tất cả tags được chọn để xử lý sau
+      if (Array.isArray(data.tag_ids) && data.tag_ids.length > 1) {
+        (resourceData as any).additional_tag_ids = data.tag_ids.slice(1); // Các tag còn lại
+      }
 
-      console.log("Resource data to send:", resourceData);
 
       const response = await createResource(resourceData);
       
-      if (response?.statusCode === 200 || response?.data?.resourceId) {
-        message.success(response?.message || "Thêm tài nguyên thành công");
+      console.log("Create resource response:", response);
+      
+      if (response?.statusCode === 200 || response?.data?.resourceId || response?.data?.message) {
+        message.success(response?.message || response?.data?.message || "Thêm tài nguyên thành công");
         fetchResources();
         setOpenModalAdd(false);
       } else {
+        console.error("Create resource failed:", response);
         message.error(response?.message || "Thêm tài nguyên thất bại. Vui lòng thử lại!");
       }
     } catch (error: any) {
@@ -371,13 +436,30 @@ export default function ManageResource() {
         const isLt50M = file.size / 1024 / 1024 < 50;
         if (!isLt50M) {
           message.error('Tệp tin phải nhỏ hơn 50MB!');
-          return false;
+          return Upload.LIST_IGNORE;
         }
         
-        console.log('File selected for update:', file);
+        // Validate file type
+        const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'zip', 'rar', '7z'];
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        
+        if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+          message.error(`Loại file không được hỗ trợ! Chỉ chấp nhận: ${allowedExtensions.join(', ')}`);
+          return Upload.LIST_IGNORE;
+        }
+        
+        message.success(`Đã chọn file mới: ${file.name}`);
         return false; // Prevent automatic upload
       },
-      accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.mp4,.mp3,.zip,.rar",
+      onChange: (info: any) => {
+        if (info.fileList.length > 0) {
+          const file = info.fileList[0];
+          if (file.status === 'error') {
+            message.error('Lỗi khi chọn file!');
+          }
+        }
+      },
+      accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.avi,.mov,.mp3,.wav,.zip,.rar,.7z",
     };
 
     setFormFields([
@@ -461,6 +543,15 @@ export default function ManageResource() {
         disabled: true,
       },
       {
+        name: "tag_ids",
+        label: "Cập nhật Tags",
+        type: "multiselect",
+        placeholder: "Chọn tags mới (để trống nếu không thay đổi)",
+        options: tags,
+        initialValue: item.tags?.map((tag: any) => tag.id) || [],
+        allowClear: true,
+      },
+      {
         name: "current_collections",
         label: "Collections hiện tại",
         type: "textarea",
@@ -501,23 +592,18 @@ export default function ManageResource() {
         detail: data.detail,
         status: data.status,
       };
+      
+      // Xử lý tag_ids nếu có thay đổi
+      if (data.tag_ids && Array.isArray(data.tag_ids) && data.tag_ids.length > 0) {
+        resourceData.tag_ids = data.tag_ids;
+      }
 
       // Xử lý file nếu có - Antd Upload trả về fileList
-      if (data.file) {
-        let fileToUpload = null;
-        if (Array.isArray(data.file) && data.file.length > 0) {
-          // data.file là fileList từ Antd Form
-          fileToUpload = data.file[0].originFileObj || data.file[0];
-        } else if (data.file.fileList && data.file.fileList.length > 0) {
-          // Fallback nếu có nested structure
-          fileToUpload = data.file.fileList[0].originFileObj;
-        } else if (data.file.file) {
-          fileToUpload = data.file.file;
-        } else if (data.file instanceof File) {
-          fileToUpload = data.file;
-        }
-
-        if (fileToUpload) {
+      if (data.file && Array.isArray(data.file) && data.file.length > 0) {
+        const fileItem = data.file[0];
+        const fileToUpload = fileItem.originFileObj || fileItem.file || fileItem;
+        
+        if (fileToUpload && fileToUpload instanceof File) {
           console.log("File to update:", fileToUpload);
           resourceData.file = fileToUpload;
         }
@@ -579,7 +665,7 @@ export default function ManageResource() {
       <PageBreadcrumb pageTitle="Quản lý tài nguyên" />
       
       {/* Statistics Cards */}
-      {resources?.data?.resources && (
+      {resources?.data && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4 mb-6">
           <div className="rounded-lg bg-white p-4 shadow-sm border border-gray-200">
             <div className="flex items-center">
@@ -588,7 +674,7 @@ export default function ManageResource() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tổng tài nguyên</p>
-                <p className="text-2xl font-bold text-gray-900">{resources.data.resources.pagination?.totalResources || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{resources.data.pagination?.totalResources || 0}</p>
               </div>
             </div>
           </div>
@@ -601,7 +687,7 @@ export default function ManageResource() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Đã xuất bản</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {resources.data.resources.resources?.filter((r: any) => r.status === 'publish').length || 0}
+                  {resources.data.resources?.filter((r: any) => r.status === 'publish').length || 0}
                 </p>
               </div>
             </div>
@@ -615,7 +701,7 @@ export default function ManageResource() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Chờ duyệt</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {resources.data.resources.resources?.filter((r: any) => r.status === 'pending').length || 0}
+                  {resources.data.resources?.filter((r: any) => r.status === 'pending').length || 0}
                 </p>
               </div>
             </div>
@@ -629,7 +715,7 @@ export default function ManageResource() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Premium</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {resources.data.resources.resources?.filter((r: any) => r.plan === 'premium').length || 0}
+                  {resources.data.resources?.filter((r: any) => r.plan === 'premium').length || 0}
                 </p>
               </div>
             </div>
@@ -858,7 +944,7 @@ export default function ManageResource() {
           <ReusableTable
             error={errorData}
             title="Danh sách tài nguyên"
-            data={resources?.data?.resources?.resources ?? []}
+            data={resources?.data?.resources ?? []}
             columns={columns}
             onEdit={onEdit}
             onDelete={onDelete}
@@ -868,7 +954,7 @@ export default function ManageResource() {
         <Pagination
           limit={quantity}
           offset={offset ?? 1}
-          totalPages={resources?.data?.resources?.pagination?.totalPages ?? 0}
+          totalPages={resources?.data?.pagination?.totalPages ?? 0}
           onPageChange={(limit, newOffset) => {
             setQuantity(limit);
             setOffset(newOffset);

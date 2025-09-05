@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Form, Input, Button, Upload, Modal, Select, Checkbox, Image } from "antd";
+import { Form, Input, Button, Upload, Modal, Select, Checkbox } from "antd";
 import { PlusOutlined, EyeOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 
@@ -16,6 +16,7 @@ interface Field {
     | "textarea"
     | "upload"
     | "select"
+    | "multiselect"
     | "checkbox"
     | "checkbox-group";
   options?: { label: string; value: any }[];
@@ -123,25 +124,38 @@ const FormModal: React.FC<FormModalProps> = ({
             <Upload
               listType="picture-card"
               className="avatar-uploader"
-              showUploadList={true}
+              showUploadList={{
+                showPreviewIcon: true,
+                showRemoveIcon: true,
+                showDownloadIcon: false,
+              }}
               maxCount={1}
               {...field.uploadProps}
+              onChange={(info) => {
+                // Gọi onChange từ uploadProps nếu có
+                if (field.uploadProps?.onChange) {
+                  field.uploadProps.onChange(info);
+                }
+              }}
             >
               {currentPreview ? (
                 <div className="relative w-full h-full group">
                   <img
                     src={currentPreview}
                     alt="preview"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded"
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <span className="text-white">Thay đổi</span>
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                    <span className="text-white text-sm">Thay đổi file</span>
                   </div>
                 </div>
               ) : (
-                <div>
-                  <PlusOutlined />
-                  <div style={{ marginTop: 8 }}>Tải lên</div>
+                <div className="flex flex-col items-center justify-center text-gray-400">
+                  <PlusOutlined className="text-2xl mb-2" />
+                  <div className="text-sm">Chọn file</div>
+                  <div className="text-xs mt-1 text-gray-500 text-center">
+                    Hỗ trợ: Ảnh, Video, Audio, PDF, Document
+                  </div>
                 </div>
               )}
             </Upload>
@@ -152,9 +166,10 @@ const FormModal: React.FC<FormModalProps> = ({
                 onClick={() => {
                   window.open(currentPreview, '_blank');
                 }}
-                className="p-0"
+                className="p-0 text-blue-500 hover:text-blue-700"
+                size="small"
               >
-                Xem ảnh
+                Xem file hiện tại
               </Button>
             )}
           </div>
@@ -164,6 +179,24 @@ const FormModal: React.FC<FormModalProps> = ({
           <Select 
             placeholder={field.placeholder}
             allowClear={field.allowClear}
+          >
+            {field.options?.map((option) => (
+              <Select.Option key={option.value} value={option.value}>
+                {option.label}
+              </Select.Option>
+            ))}
+          </Select>
+        );
+      case "multiselect":
+        return (
+          <Select 
+            mode="multiple"
+            placeholder={field.placeholder}
+            allowClear={field.allowClear}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.children?.toString().toLowerCase() ?? '').includes(input.toLowerCase())
+            }
           >
             {field.options?.map((option) => (
               <Select.Option key={option.value} value={option.value}>
@@ -218,7 +251,6 @@ const FormModal: React.FC<FormModalProps> = ({
             getValueFromEvent={
               field.type === "upload" 
                 ? (e) => {
-                    console.log('getValueFromEvent:', e);
                     if (Array.isArray(e)) {
                       return e;
                     }
@@ -229,6 +261,7 @@ const FormModal: React.FC<FormModalProps> = ({
             initialValue={
               field.initialValue || 
               (field.type === "checkbox-group" ? [] : 
+               field.type === "multiselect" ? [] :
                field.type === "upload" ? [] : "")
             }
             label={
@@ -238,7 +271,28 @@ const FormModal: React.FC<FormModalProps> = ({
                 </label>
               ) : null
             }
-            rules={field.rules || renderField(field).props.rules}
+            rules={field.type === "upload" ? 
+              (field.rules || []).map(rule => {
+                // Nếu rule đã có validator, giữ nguyên
+                if (rule.validator) {
+                  return rule;
+                }
+                // Nếu chỉ có required: true, thêm validator
+                if (rule.required) {
+                  return {
+                    validator: (_: any, value: any) => {
+                      if (!value || (Array.isArray(value) && value.length === 0)) {
+                        return Promise.reject(new Error(rule.message || 'Vui lòng chọn tệp tin!'));
+                      }
+                      return Promise.resolve();
+                    }
+                  };
+                } else {
+                  return rule;
+                }
+              }) : 
+              (field.rules || [])
+            }
             className="mb-4">
             {renderField(field)}
           </Form.Item>
