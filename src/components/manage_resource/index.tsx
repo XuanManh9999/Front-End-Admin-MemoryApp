@@ -92,6 +92,10 @@ export default function ManageResource() {
   const [tags, setTags] = useState<any[]>([]);
   const [fileTypes, setFileTypes] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
+  
+  // File upload states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string>("");
 
   // Set default URL params
   useEffect(() => {
@@ -169,10 +173,17 @@ export default function ManageResource() {
       }
 
       if (tagsRes?.data?.tags) {
-        setTags(tagsRes.data.tags.map((tag: any) => ({
+        const mappedTags = tagsRes.data.tags.map((tag: any) => ({
           label: tag.name,
           value: tag.id
-        })));
+        }));
+        console.log("=== TAGS DEBUG ===");
+        console.log("Raw tags response:", tagsRes.data.tags);
+        console.log("Mapped tags:", mappedTags);
+        console.log("=== END TAGS DEBUG ===");
+        setTags(mappedTags);
+      } else {
+        console.error("No tags found in response:", tagsRes);
       }
 
       if (fileTypesRes?.data) {
@@ -220,6 +231,24 @@ export default function ManageResource() {
 
   // Handle create resource
   const handleShowModalAdd = () => {
+    // Kiểm tra xem data đã load chưa
+    if (tags.length === 0 || categories.length === 0 || collections.length === 0) {
+      console.warn("Data chưa được load đầy đủ, đang load lại...");
+      message.warning("Đang tải dữ liệu, vui lòng thử lại sau giây lát!");
+      fetchOptions(); // Load lại data
+      return;
+    }
+    
+    // Reset file states
+    setSelectedFile(null);
+    setPreviewImage("");
+    
+    console.log("=== SHOW MODAL ADD DEBUG ===");
+    console.log("Categories:", categories.length);
+    console.log("Tags:", tags.length);
+    console.log("Collections:", collections.length);
+    console.log("=== END SHOW MODAL ADD DEBUG ===");
+    
     const uploadProps = {
       beforeUpload: (file: File) => {
         console.log("=== BEFORE UPLOAD ===");
@@ -246,9 +275,24 @@ export default function ManageResource() {
           return Upload.LIST_IGNORE;
         }
         
+        // Lưu file vào state
+        setSelectedFile(file);
+        
+        // Tạo preview nếu là ảnh
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            setPreviewImage(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+        
+        // File đã được chọn thành công
+        console.log("File selected successfully:", file.name);
+        
         message.success(`✅ Đã chọn file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
         console.log("=== END BEFORE UPLOAD ===");
-        return false; // Prevent automatic upload, we'll handle it manually
+        return false; // Ngăn upload thực sự
       },
       onChange: (info: any) => {
         console.log("=== UPLOAD CHANGE ===");
@@ -265,14 +309,11 @@ export default function ManageResource() {
             originFileObjType: typeof file.originFileObj
           });
           
-          if (file.status === 'error') {
-            message.error('❌ Lỗi khi chọn file!');
-          } else if (file.status === 'done' || file.status === 'uploading') {
+          // Với beforeUpload: false, file sẽ có status 'done' hoặc không có status
+          // Không cần báo lỗi nữa vì file đã được validate trong beforeUpload
+          if (file.status !== 'error') {
             console.log("File ready for upload");
-            // Trigger form validation update
-            setTimeout(() => {
-              console.log("Triggering form field update for file");
-            }, 50);
+            // File đã sẵn sàng để submit
           }
         } else {
           console.log("No files in list");
@@ -333,13 +374,7 @@ export default function ManageResource() {
         label: "Tệp tin",
         type: "upload",
         uploadProps,
-        // Tạm thời tắt validation ở đây, sẽ validate trong handleAddResource
-        // rules: [
-        //   { 
-        //     required: true, 
-        //     message: "Vui lòng chọn tệp tin!"
-        //   }
-        // ],
+        // Không cần validation ở đây nữa, đã có hidden field
       },
       {
         name: "tag_ids",
@@ -363,62 +398,31 @@ export default function ManageResource() {
   };
 
   const handleAddResource = async (data: any) => {
+    console.log("=== HANDLE ADD RESOURCE START ===");
+    console.log("Complete form data:", data);
+    console.log("Selected file from state:", selectedFile);
+    
+    // QUAN TRỌNG: Kiểm tra file trước khi submit form
+    if (!selectedFile) {
+      console.error("No file selected in state");
+      message.error("Vui lòng chọn tệp tin trước khi submit!");
+      return; // Dừng ngay, không submit form
+    }
+
+    if (!selectedFile || !(selectedFile instanceof File)) {
+      console.error("File validation failed:", {
+        hasFile: !!selectedFile,
+        isInstance: selectedFile ? (selectedFile as any) instanceof File : false,
+        type: typeof selectedFile
+      });
+      message.error("File không được nhận diện đúng cách! Vui lòng thử chọn lại file.");
+      return; // Dừng ngay, không submit form
+    }
+
     setLoading(true);
     try {
-      console.log("=== HANDLE ADD RESOURCE START ===");
-      console.log("Complete form data:", data);
-      console.log("All form keys:", Object.keys(data));
-      console.log("=== END FORM DATA OVERVIEW ===");
-      
-      // Xử lý file từ Antd Upload - data.file sẽ là fileList array
-      let fileToUpload = null;
-      
       console.log("=== DEBUG FILE UPLOAD ===");
-      console.log("Raw file data from form:", data.file);
-      console.log("Type of data.file:", typeof data.file);
-      console.log("Is array:", Array.isArray(data.file));
-      
-      // Cách xử lý mới cho Antd Upload - Robust approach
-      if (data.file) {
-        if (Array.isArray(data.file) && data.file.length > 0) {
-          // data.file là fileList từ Antd Form
-          const fileItem = data.file[0];
-          console.log("File item structure:", {
-            uid: fileItem?.uid,
-            name: fileItem?.name,
-            status: fileItem?.status,
-            hasOriginFileObj: !!fileItem?.originFileObj,
-            hasFile: !!fileItem?.file,
-            isFile: fileItem instanceof File,
-            keys: Object.keys(fileItem || {})
-          });
-          
-          // Thử nhiều cách để lấy File object
-          fileToUpload = fileItem?.originFileObj || fileItem?.file || fileItem;
-          
-          // Nếu vẫn chưa có File object và status là done, có thể file đã được process
-          if (!fileToUpload && fileItem?.status === 'done' && fileItem?.name) {
-            console.log("File processed but no direct File object, trying alternative approaches");
-            // Trong trường hợp này, có thể cần tạo File object từ data có sẵn
-            // Hoặc file đã được upload và chúng ta cần handle khác
-          }
-          
-        } else if (data.file instanceof File) {
-          // Trường hợp data.file trực tiếp là File object
-          fileToUpload = data.file;
-          console.log("Direct File object detected");
-          
-        } else if (data.file?.originFileObj) {
-          // Trường hợp data.file là object chứa originFileObj
-          fileToUpload = data.file.originFileObj;
-          console.log("OriginFileObj from single object");
-          
-        } else if (data.file?.file) {
-          // Trường hợp data.file có property file
-          fileToUpload = data.file.file;
-          console.log("File from file property");
-        }
-      }
+      const fileToUpload = selectedFile;
 
       console.log("Final file to upload:", {
         file: fileToUpload,
@@ -428,26 +432,6 @@ export default function ManageResource() {
         type: fileToUpload?.type
       });
       console.log("=== END DEBUG FILE UPLOAD ===");
-
-      // Validation file trước khi submit
-      if (!data.file || (Array.isArray(data.file) && data.file.length === 0)) {
-        console.error("No file in form data");
-        message.error("Vui lòng chọn tệp tin trước khi submit!");
-        setLoading(false);
-        return;
-      }
-
-      if (!fileToUpload || !(fileToUpload instanceof File)) {
-        console.error("File validation failed:", {
-          hasFile: !!fileToUpload,
-          isInstance: fileToUpload instanceof File,
-          type: typeof fileToUpload,
-          originalData: data.file
-        });
-        message.error("File không được nhận diện đúng cách! Vui lòng thử chọn lại file.");
-        setLoading(false);
-        return;
-      }
       
       // Validate required fields
       if (!data.title) {
@@ -469,12 +453,22 @@ export default function ManageResource() {
       }
       
       // Debug form data
+      console.log("=== FORM DATA DEBUG ===");
       console.log("Form data received:", data);
       console.log("Available tags:", tags);
       console.log("Available collections:", collections);
+      console.log("data.tag_ids:", data.tag_ids);
+      console.log("Type of data.tag_ids:", typeof data.tag_ids);
+      console.log("Is array:", Array.isArray(data.tag_ids));
+      console.log("=== END FORM DATA DEBUG ===");
       
       // Validate và xử lý tag_ids
       if (!data.tag_ids || (Array.isArray(data.tag_ids) && data.tag_ids.length === 0)) {
+        console.error("Tag validation failed:", {
+          hasTagIds: !!data.tag_ids,
+          tagIds: data.tag_ids,
+          availableTags: tags.length
+        });
         message.error("Vui lòng chọn ít nhất một thẻ!");
         setLoading(false);
         return;
@@ -535,6 +529,8 @@ export default function ManageResource() {
         message.success(successMessage);
         fetchResources();
         setOpenModalAdd(false);
+        setSelectedFile(null);
+        setPreviewImage("");
       } else {
         console.error("Create resource failed:", response);
         
@@ -1124,7 +1120,11 @@ export default function ManageResource() {
         isOpen={openModalAdd}
         isLoading={loading}
         onSubmit={handleAddResource}
-        onCancel={() => setOpenModalAdd(false)}
+        onCancel={() => {
+          setOpenModalAdd(false);
+          setSelectedFile(null);
+          setPreviewImage("");
+        }}
         formFields={formFieldsAdd}
       />
     </>

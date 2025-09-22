@@ -99,6 +99,11 @@ const FormModal: React.FC<FormModalProps> = ({
   }, [formFields, isOpen, isInitialized]);
 
   const onFinish = (values: any) => {
+    console.log("=== FORMMODAL SUBMIT ===");
+    console.log("Form values:", values);
+    console.log("Keys:", Object.keys(values));
+    console.log("tag_ids value:", values.tag_ids);
+    console.log("=== END FORMMODAL SUBMIT ===");
     if (onSubmit) onSubmit(values);
   };
 
