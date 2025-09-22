@@ -93,7 +93,7 @@ export const createTag = async (tag: Tag) => {
 // Hàm cập nhật tag
 export const updateTag = async (id: number, tag: Tag) => {
   try {
-    const response = await configApi.put<UpdateTagResponse>(`/tag/${id}`, tag);
+    const response = await configApi.put<UpdateTagResponse>(`/tag/update/${id}`, tag);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;

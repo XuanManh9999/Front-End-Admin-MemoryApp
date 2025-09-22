@@ -132,7 +132,6 @@ const FormModal: React.FC<FormModalProps> = ({
               maxCount={1}
               {...field.uploadProps}
               onChange={(info) => {
-                // Gọi onChange từ uploadProps nếu có
                 if (field.uploadProps?.onChange) {
                   field.uploadProps.onChange(info);
                 }
@@ -277,14 +276,54 @@ const FormModal: React.FC<FormModalProps> = ({
                 if (rule.validator) {
                   return rule;
                 }
-                // Nếu chỉ có required: true, thêm validator
+                // Nếu chỉ có required: true, thêm validator với delay
                 if (rule.required) {
                   return {
                     validator: (_: any, value: any) => {
-                      if (!value || (Array.isArray(value) && value.length === 0)) {
-                        return Promise.reject(new Error(rule.message || 'Vui lòng chọn tệp tin!'));
-                      }
-                      return Promise.resolve();
+                      return new Promise((resolve, reject) => {
+                        // Thêm delay nhỏ để đảm bảo file đã được set vào form
+                        setTimeout(() => {
+                          if (!value || (Array.isArray(value) && value.length === 0)) {
+                            reject(new Error(rule.message || 'Vui lòng chọn tệp tin!'));
+                            return;
+                          }
+                          
+                          // Kiểm tra xem có file thực sự không
+                          if (Array.isArray(value) && value.length > 0) {
+                            const fileItem = value[0];
+                            console.log("File item in validation:", {
+                              uid: fileItem?.uid,
+                              name: fileItem?.name,
+                              status: fileItem?.status,
+                              hasOriginFileObj: !!fileItem?.originFileObj,
+                              hasFile: !!fileItem?.file,
+                              isFile: fileItem instanceof File,
+                              keys: Object.keys(fileItem || {})
+                            });
+                            
+                            // Kiểm tra các cách khác nhau để có file object
+                            const hasValidFile = !!(
+                              fileItem?.originFileObj || 
+                              fileItem?.file || 
+                              (fileItem instanceof File) ||
+                              (fileItem?.status === 'done' && fileItem?.name) ||
+                              (fileItem?.status === 'uploading' && fileItem?.name)
+                            );
+                            
+                            console.log("Has valid file:", hasValidFile);
+                            
+                            if (!hasValidFile) {
+                              console.log("Validation FAILED: No valid file object");
+                              reject(new Error("File không hợp lệ! Vui lòng chọn lại file."));
+                              return;
+                            }
+                          }
+                          
+                          console.log("Validation PASSED");
+                          console.log("=== END FORMMODAL FILE VALIDATION ===");
+                          resolve(undefined);
+                        }, 100); // Delay 100ms để đảm bảo file đã được process
+                      });
                     }
                   };
                 } else {

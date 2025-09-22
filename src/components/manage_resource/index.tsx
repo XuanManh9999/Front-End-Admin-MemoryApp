@@ -222,6 +222,14 @@ export default function ManageResource() {
   const handleShowModalAdd = () => {
     const uploadProps = {
       beforeUpload: (file: File) => {
+        console.log("=== BEFORE UPLOAD ===");
+        console.log("File details:", {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        });
+        
         // Validate file size (max 50MB)
         const isLt50M = file.size / 1024 / 1024 < 50;
         if (!isLt50M) {
@@ -238,18 +246,44 @@ export default function ManageResource() {
           return Upload.LIST_IGNORE;
         }
         
-        message.success(`Đã chọn file: ${file.name}`);
+        message.success(`✅ Đã chọn file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log("=== END BEFORE UPLOAD ===");
         return false; // Prevent automatic upload, we'll handle it manually
       },
       onChange: (info: any) => {
+        console.log("=== UPLOAD CHANGE ===");
+        console.log("Info:", info);
+        console.log("FileList length:", info.fileList.length);
+        
         if (info.fileList.length > 0) {
           const file = info.fileList[0];
+          console.log("Current file in list:", {
+            uid: file.uid,
+            name: file.name,
+            status: file.status,
+            hasOriginFileObj: !!file.originFileObj,
+            originFileObjType: typeof file.originFileObj
+          });
+          
           if (file.status === 'error') {
-            message.error('Lỗi khi chọn file!');
+            message.error('❌ Lỗi khi chọn file!');
+          } else if (file.status === 'done' || file.status === 'uploading') {
+            console.log("File ready for upload");
+            // Trigger form validation update
+            setTimeout(() => {
+              console.log("Triggering form field update for file");
+            }, 50);
           }
+        } else {
+          console.log("No files in list");
         }
+        console.log("=== END UPLOAD CHANGE ===");
       },
       accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.avi,.mov,.mp3,.wav,.zip,.rar,.7z",
+      maxCount: 1, // Chỉ cho phép 1 file
+      showUploadList: true, // Hiển thị danh sách file đã chọn
+      listType: "picture-card", // Hiển thị dạng card
+      multiple: false, // Không cho phép chọn nhiều file
     };
 
     setFormFieldsAdd([
@@ -299,18 +333,13 @@ export default function ManageResource() {
         label: "Tệp tin",
         type: "upload",
         uploadProps,
-        rules: [
-          { 
-            required: true, 
-            message: "Vui lòng chọn tệp tin!",
-            validator: (_: any, value: any) => {
-              if (!value || (Array.isArray(value) && value.length === 0)) {
-                return Promise.reject(new Error("Vui lòng chọn tệp tin!"));
-              }
-              return Promise.resolve();
-            }
-          }
-        ],
+        // Tạm thời tắt validation ở đây, sẽ validate trong handleAddResource
+        // rules: [
+        //   { 
+        //     required: true, 
+        //     message: "Vui lòng chọn tệp tin!"
+        //   }
+        // ],
       },
       {
         name: "tag_ids",
@@ -336,17 +365,86 @@ export default function ManageResource() {
   const handleAddResource = async (data: any) => {
     setLoading(true);
     try {
+      console.log("=== HANDLE ADD RESOURCE START ===");
+      console.log("Complete form data:", data);
+      console.log("All form keys:", Object.keys(data));
+      console.log("=== END FORM DATA OVERVIEW ===");
+      
       // Xử lý file từ Antd Upload - data.file sẽ là fileList array
       let fileToUpload = null;
       
-      if (data.file && Array.isArray(data.file) && data.file.length > 0) {
-        // data.file là fileList từ Antd Form
-        const fileItem = data.file[0];
-        fileToUpload = fileItem.originFileObj || fileItem.file || fileItem;
+      console.log("=== DEBUG FILE UPLOAD ===");
+      console.log("Raw file data from form:", data.file);
+      console.log("Type of data.file:", typeof data.file);
+      console.log("Is array:", Array.isArray(data.file));
+      
+      // Cách xử lý mới cho Antd Upload - Robust approach
+      if (data.file) {
+        if (Array.isArray(data.file) && data.file.length > 0) {
+          // data.file là fileList từ Antd Form
+          const fileItem = data.file[0];
+          console.log("File item structure:", {
+            uid: fileItem?.uid,
+            name: fileItem?.name,
+            status: fileItem?.status,
+            hasOriginFileObj: !!fileItem?.originFileObj,
+            hasFile: !!fileItem?.file,
+            isFile: fileItem instanceof File,
+            keys: Object.keys(fileItem || {})
+          });
+          
+          // Thử nhiều cách để lấy File object
+          fileToUpload = fileItem?.originFileObj || fileItem?.file || fileItem;
+          
+          // Nếu vẫn chưa có File object và status là done, có thể file đã được process
+          if (!fileToUpload && fileItem?.status === 'done' && fileItem?.name) {
+            console.log("File processed but no direct File object, trying alternative approaches");
+            // Trong trường hợp này, có thể cần tạo File object từ data có sẵn
+            // Hoặc file đã được upload và chúng ta cần handle khác
+          }
+          
+        } else if (data.file instanceof File) {
+          // Trường hợp data.file trực tiếp là File object
+          fileToUpload = data.file;
+          console.log("Direct File object detected");
+          
+        } else if (data.file?.originFileObj) {
+          // Trường hợp data.file là object chứa originFileObj
+          fileToUpload = data.file.originFileObj;
+          console.log("OriginFileObj from single object");
+          
+        } else if (data.file?.file) {
+          // Trường hợp data.file có property file
+          fileToUpload = data.file.file;
+          console.log("File from file property");
+        }
+      }
+
+      console.log("Final file to upload:", {
+        file: fileToUpload,
+        isFile: fileToUpload instanceof File,
+        name: fileToUpload?.name,
+        size: fileToUpload?.size,
+        type: fileToUpload?.type
+      });
+      console.log("=== END DEBUG FILE UPLOAD ===");
+
+      // Validation file trước khi submit
+      if (!data.file || (Array.isArray(data.file) && data.file.length === 0)) {
+        console.error("No file in form data");
+        message.error("Vui lòng chọn tệp tin trước khi submit!");
+        setLoading(false);
+        return;
       }
 
       if (!fileToUpload || !(fileToUpload instanceof File)) {
-        message.error("Vui lòng chọn tệp tin hợp lệ!");
+        console.error("File validation failed:", {
+          hasFile: !!fileToUpload,
+          isInstance: fileToUpload instanceof File,
+          type: typeof fileToUpload,
+          originalData: data.file
+        });
+        message.error("File không được nhận diện đúng cách! Vui lòng thử chọn lại file.");
         setLoading(false);
         return;
       }
@@ -375,11 +473,8 @@ export default function ManageResource() {
       console.log("Available tags:", tags);
       console.log("Available collections:", collections);
       
-      // Xử lý tag_ids - lấy tag đầu tiên nếu là array, hoặc giá trị đơn
-      const primaryTagId = Array.isArray(data.tag_ids) ? data.tag_ids[0] : data.tag_ids;
-      console.log("Primary tag ID:", primaryTagId);
-      
-      if (!primaryTagId) {
+      // Validate và xử lý tag_ids
+      if (!data.tag_ids || (Array.isArray(data.tag_ids) && data.tag_ids.length === 0)) {
         message.error("Vui lòng chọn ít nhất một thẻ!");
         setLoading(false);
         return;
@@ -391,6 +486,14 @@ export default function ManageResource() {
         return;
       }
       
+      // Xử lý tag_ids theo format mong đợi của backend
+      const tagIds = Array.isArray(data.tag_ids) ? data.tag_ids : [data.tag_ids];
+      const primaryTagId = tagIds[0]; // Tag chính
+      const additionalTagIds = tagIds.slice(1); // Các tag phụ
+      
+      console.log("Primary tag ID:", primaryTagId);
+      console.log("Additional tag IDs:", additionalTagIds);
+      
       const resourceData: Resource = {
         title: data.title,
         description: data.description,
@@ -398,27 +501,62 @@ export default function ManageResource() {
         plan: data.plan,
         detail: data.detail,
         file: fileToUpload,
-        tag_id: primaryTagId, // API backend vẫn cần tag_id đơn
+        tag_id: primaryTagId,
         collection_id: data.collection_id,
       };
       
-      // Thêm thông tin về tất cả tags được chọn để xử lý sau
-      if (Array.isArray(data.tag_ids) && data.tag_ids.length > 1) {
-        (resourceData as any).additional_tag_ids = data.tag_ids.slice(1); // Các tag còn lại
+      // Thêm additional tags nếu có (phải có ít nhất 2 tags để có additional)
+      if (additionalTagIds.length > 0) {
+        resourceData.additional_tag_ids = additionalTagIds;
       }
 
+      console.log("=== FINAL RESOURCE DATA ===");
+      console.log("Resource data to be sent:", {
+        ...resourceData,
+        file: resourceData.file ? {
+          name: resourceData.file.name,
+          size: resourceData.file.size,
+          type: resourceData.file.type,
+          isFile: resourceData.file instanceof File
+        } : 'NO FILE'
+      });
+      console.log("=== CALLING CREATE RESOURCE ===");
 
       const response = await createResource(resourceData);
       
       console.log("Create resource response:", response);
       
-      if (response?.statusCode === 200 || response?.data?.resourceId || response?.data?.message) {
-        message.success(response?.message || response?.data?.message || "Thêm tài nguyên thành công");
+      // Kiểm tra response thành công
+      if (response?.statusCode === 200 || response?.statusCode === 201 || 
+          response?.data?.resourceId || response?.data?.message || 
+          response?.message?.includes("thành công")) {
+        
+        const successMessage = response?.message || response?.data?.message || "Thêm tài nguyên thành công";
+        message.success(successMessage);
         fetchResources();
         setOpenModalAdd(false);
       } else {
         console.error("Create resource failed:", response);
-        message.error(response?.message || "Thêm tài nguyên thất bại. Vui lòng thử lại!");
+        
+        // Hiển thị lỗi chi tiết hơn
+        let errorMessage = "Thêm tài nguyên thất bại";
+        
+        if (response?.message) {
+          errorMessage = response.message;
+        } else if (response?.error) {
+          errorMessage = response.error;
+        } else if (response?.data?.error) {
+          errorMessage = response.data.error;
+        }
+        
+        console.error("Detailed error:", {
+          statusCode: response?.statusCode,
+          message: response?.message,
+          error: response?.error,
+          data: response?.data
+        });
+        
+        message.error(errorMessage);
       }
     } catch (error: any) {
       console.error("Error creating resource:", error);

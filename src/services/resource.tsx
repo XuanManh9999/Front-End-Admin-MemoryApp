@@ -88,9 +88,11 @@ export const createResource = async (resource: Resource) => {
     formData.append('tag_id', resource.tag_id.toString());
     formData.append('collection_id', resource.collection_id.toString());
     
-    // Thêm additional tags nếu có
+    // Thêm additional tags nếu có - mỗi tag là một field riêng biệt
     if (resource.additional_tag_ids && resource.additional_tag_ids.length > 0) {
-      formData.append('additional_tag_ids', JSON.stringify(resource.additional_tag_ids));
+      resource.additional_tag_ids.forEach((tagId) => {
+        formData.append('additional_tag_ids', tagId.toString());
+      });
     }
     
     // Xử lý file và auto-detect file_type
@@ -128,10 +130,15 @@ export const createResource = async (resource: Resource) => {
     }
 
     // Log FormData để debug
-    console.log('FormData entries:');
+    console.log('=== FormData entries for CREATE RESOURCE ===');
     for (let pair of formData.entries()) {
-      console.log(pair[0] + ': ' + (pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]));
+      if (pair[1] instanceof File) {
+        console.log(`${pair[0]}: File - ${pair[1].name} (${pair[1].size} bytes, type: ${pair[1].type})`);
+      } else {
+        console.log(`${pair[0]}: ${pair[1]}`);
+      }
     }
+    console.log('=== End FormData entries ===');
 
     const response = await configApi.post(`/admin/manage-resource/create`, formData, {
       headers: { 
