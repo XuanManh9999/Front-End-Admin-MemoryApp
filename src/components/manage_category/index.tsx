@@ -57,12 +57,21 @@ export default function ManageCategory() {
 
   // Upload handler cho modal thêm mới
   const handleAddUpload = (file: RcFile) => {
+    console.log("=== CATEGORY BEFORE UPLOAD ===");
+    console.log("File details:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
+    
     const isImage = file.type.startsWith('image/');
     if (!isImage) {
       message.error('Bạn chỉ có thể tải lên file hình ảnh!');
       return false;
     }
     
+    // Lưu file vào state
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onload = () => {
@@ -70,7 +79,12 @@ export default function ManageCategory() {
       setPreviewImage(previewUrl);
     };
     reader.readAsDataURL(file);
-    return false;
+    
+    // File đã được chọn thành công
+    console.log("File selected successfully:", file.name);
+    message.success(`✅ Đã chọn ảnh: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log("=== END CATEGORY BEFORE UPLOAD ===");
+    return false; // Ngăn upload thực sự
   };
 
   // Upload handler cho modal chỉnh sửa
@@ -186,7 +200,7 @@ export default function ManageCategory() {
         type: "upload" as const,
         uploadProps: addUploadProps,
         previewImage: previewImage,
-        rules: [{ required: true, message: "Vui lòng chọn hình ảnh!" }],
+        // Không cần validation ở đây, sẽ validate trong handleAddCategory
       },
       {
         name: "parent_id",
@@ -302,12 +316,30 @@ export default function ManageCategory() {
   };
 
   const handleAddCategory = async (data: any) => {
+    console.log("=== HANDLE ADD CATEGORY START ===");
+    console.log("Form data:", data);
+    console.log("Selected file from state:", selectedFile);
+    console.log("Preview image:", previewImage);
+    
+    // QUAN TRỌNG: Kiểm tra file trước khi submit form
+    if (!selectedFile) {
+      console.error("No file selected in state");
+      message.error("Vui lòng chọn hình ảnh cho danh mục");
+      return; // Dừng ngay, không submit form
+    }
+
+    if (!selectedFile || !(selectedFile instanceof File)) {
+      console.error("File validation failed:", {
+        hasFile: !!selectedFile,
+        isInstance: selectedFile ? (selectedFile as any) instanceof File : false,
+        type: typeof selectedFile
+      });
+      message.error("File không được nhận diện đúng cách! Vui lòng thử chọn lại file.");
+      return; // Dừng ngay, không submit form
+    }
+
     try {
       setSubmitLoading(true);
-      if (!selectedFile) {
-        message.error("Vui lòng chọn hình ảnh cho danh mục");
-        return;
-      }
 
       const formData = new FormData();
       formData.append('name', data.name);
@@ -317,7 +349,10 @@ export default function ManageCategory() {
         formData.append('parent_id', data.parent_id);
       }
 
+      console.log("Sending formData with file:", selectedFile.name);
       const response = await createCategory(formData);
+      
+      console.log("Create category response:", response);
 
       if (response.statusCode === 201) {
         message.success("Thêm danh mục thành công");
@@ -325,6 +360,9 @@ export default function ManageCategory() {
         setOpenModalAdd(false);
         setSelectedFile(null);
         setPreviewImage("");
+      } else {
+        console.error("Create category failed:", response);
+        message.error(response?.message || "Thêm danh mục thất bại");
       }
     } catch (error: any) {
       message.error(error?.message || "Thêm danh mục thất bại");
@@ -334,10 +372,15 @@ export default function ManageCategory() {
   };
 
   const handleShowModalAddCategory = () => {
+    console.log("=== SHOW MODAL ADD CATEGORY ===");
+    console.log("Resetting states...");
+    
     setCurrentEditItem(null);
     setSelectedFile(null);
     setPreviewImage("");
     setOpenModalAdd(true);
+    
+    console.log("Modal opened for adding category");
   };
 
   return (
