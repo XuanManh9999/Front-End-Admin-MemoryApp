@@ -8,6 +8,7 @@ import { Input, message, Select, Upload } from "antd";
 import Pagination from "../pagination";
 import Label from "../form/Label";
 import { IoIosAdd } from "react-icons/io";
+import * as XLSX from 'xlsx';
 import FormModal from "../common/FormModal";
 import { 
   getResources, 
@@ -789,6 +790,104 @@ export default function ManageResource() {
     }
   };
 
+  // Handle export to Excel
+  const handleExportExcel = async () => {
+    try {
+      console.log("=== EXPORT EXCEL START ===");
+      setLoading(true);
+      
+      // Fetch tất cả resources để xuất (không phân trang)
+      const exportFilters = {
+        search: search.trim(),
+        category_id: categoryFilter,
+        file_type: fileTypeFilter,
+        plan: planFilter,
+        status: statusFilter,
+      };
+      
+      // Fetch với limit lớn để lấy tất cả data
+      const exportResponse = await getResources(
+        { page: 0, limit: 1000 }, // Lấy tối đa 1000 records
+        exportFilters
+      );
+      
+      if (!exportResponse?.data?.resources || exportResponse.data.resources.length === 0) {
+        message.warning("Không có dữ liệu để xuất!");
+        return;
+      }
+      
+      const exportData = exportResponse.data.resources;
+      console.log("Export data count:", exportData.length);
+      
+      // Chuẩn bị dữ liệu cho Excel
+      const excelData = exportData.map((item: any, index: number) => ({
+        'STT': index + 1,
+        'ID': item.id || '',
+        'Tiêu đề': item.title || '',
+        'Mô tả': item.description || '',
+        'Danh mục': item.category_name || '',
+        'Gói': item.plan === 'free' ? 'Miễn phí' : 'Premium',
+        'Loại file': item.file_type || '',
+        'Lượt tải': item.downloads || 0,
+        'Yêu thích': item.favorites_count || 0,
+        'Trạng thái': item.status === 'publish' ? 'Đã xuất bản' : 'Chờ duyệt',
+        'Người tạo': item.user_username_admin || '',
+        'Ngày tạo': item.created_at ? new Date(item.created_at).toLocaleDateString('vi-VN') : '',
+        'URL File': item.file_url || '',
+        'Tags': item.tags?.map((tag: any) => tag.name).join(', ') || '',
+        'Collections': item.collections?.map((col: any) => col.name).join(', ') || '',
+        'Chi tiết': item.detail || ''
+      }));
+      
+      console.log("Excel data prepared:", excelData.length, "rows");
+      
+      // Tạo workbook và worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // Thiết lập độ rộng cột
+      const colWidths = [
+        { wch: 5 },   // STT
+        { wch: 8 },   // ID
+        { wch: 30 },  // Tiêu đề
+        { wch: 40 },  // Mô tả
+        { wch: 20 },  // Danh mục
+        { wch: 12 },  // Gói
+        { wch: 15 },  // Loại file
+        { wch: 10 },  // Lượt tải
+        { wch: 10 },  // Yêu thích
+        { wch: 15 },  // Trạng thái
+        { wch: 20 },  // Người tạo
+        { wch: 15 },  // Ngày tạo
+        { wch: 50 },  // URL File
+        { wch: 30 },  // Tags
+        { wch: 30 },  // Collections
+        { wch: 50 }   // Chi tiết
+      ];
+      ws['!cols'] = colWidths;
+      
+      // Thêm worksheet vào workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh sách tài nguyên');
+      
+      // Tạo tên file với timestamp
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+      const filename = `BaoCao_TaiNguyen_${timestamp}.xlsx`;
+      
+      // Xuất file
+      XLSX.writeFile(wb, filename);
+      
+      console.log("Excel file exported:", filename);
+      message.success(`✅ Đã xuất báo cáo Excel: ${filename}`);
+      
+    } catch (error: any) {
+      console.error("Error exporting Excel:", error);
+      message.error("Xuất Excel thất bại! Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
     <div className="">
@@ -858,19 +957,28 @@ export default function ManageResource() {
       )}
         
       <div className="flex justify-between mb-4">
-        <button
-          onClick={() => {
-            setSearch("");
-            setCategoryFilter("");
-            setFileTypeFilter("");
-            setPlanFilter("");
-            setStatusFilter("");
-            setTimeout(() => fetchResources(), 100);
-          }}
-          className="flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-theme-xs hover:bg-red-100"
-        >
-          🔄 Reset Filters
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setSearch("");
+              setCategoryFilter("");
+              setFileTypeFilter("");
+              setPlanFilter("");
+              setStatusFilter("");
+              setTimeout(() => fetchResources(), 100);
+            }}
+            className="flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-theme-xs hover:bg-red-100"
+          >
+            🔄 Reset Filters
+          </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-full border border-green-300 bg-green-50 px-4 py-3 text-sm font-medium text-green-700 shadow-theme-xs hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            📊 Xuất Excel
+          </button>
+        </div>
         <button
             onClick={handleShowModalAdd}
             className="flex items-center dark:bg-black dark:text-white gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50">
