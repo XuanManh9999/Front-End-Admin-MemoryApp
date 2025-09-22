@@ -550,10 +550,10 @@ export default function ManageCollection() {
     <>
       <div className="">
         <PageMeta
-          title="Quản lý Collection"
-          description="Quản lý collection của hệ thống"
+          title="Quản lý bộ sưu tập"
+          description="Quản lý bộ sưu tập của hệ thống"
         />
-        <PageBreadcrumb pageTitle="Quản lý Collection" />
+        <PageBreadcrumb pageTitle="Quản lý bộ sưu tập" />
         
         {/* Statistics Cards */}
         {collections?.data && (

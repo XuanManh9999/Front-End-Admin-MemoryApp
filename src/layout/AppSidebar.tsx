@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
     path: "/manage-resource",
   },
   {
-    name: "Quản lý collection",
+    name: "Quản lý bộ sưu tập",
     icon: <FaFolder />,
     path: "/manage-collection",
   },  
