@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Upload, Modal, Select, Checkbox } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { PlusOutlined, EyeOutlined } from "@ant-design/icons";
+import type { UploadProps } from "antd";
 
 interface Field {
   name: string;
@@ -15,6 +16,7 @@ interface Field {
     | "textarea"
     | "upload"
     | "select"
+    | "multiselect"
     | "checkbox"
     | "checkbox-group";
   options?: { label: string; value: any }[];
@@ -22,6 +24,9 @@ interface Field {
   maxLength?: number;
   readOnly?: boolean;
   disabled?: boolean;
+  uploadProps?: UploadProps;
+  previewImage?: string;
+  allowClear?: boolean;
 }
 
 interface FormModalProps {
@@ -46,24 +51,62 @@ const FormModal: React.FC<FormModalProps> = ({
   cancelText = "Đóng",
 }) => {
   const [form] = Form.useForm();
+  const [currentPreviewImages, setCurrentPreviewImages] = useState<Record<string, string>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      // Cập nhật giá trị của các trường khi modal mở
-      const initialValues = formFields.reduce((values, field: Field) => {
-        values[field.name] = field.initialValue || "";
+    if (isOpen && !isInitialized) {
+      // Chỉ set initial values khi modal vừa mở lần đầu
+      const initialValues = formFields.reduce((values: Record<string, any>, field: Field) => {
+        if (field.type !== "upload") {
+          values[field.name] = field.initialValue || "";
+        }
         return values;
       }, {});
       form.setFieldsValue(initialValues);
-    } else {
-      // Reset các trường khi modal đóng
+      setIsInitialized(true);
+
+      // Cập nhật preview images
+      const previewImages = formFields.reduce((images: Record<string, string>, field: Field) => {
+        if (field.type === "upload" && field.previewImage) {
+          images[field.name] = field.previewImage;
+        }
+        return images;
+      }, {});
+      setCurrentPreviewImages(previewImages);
+    } else if (!isOpen) {
+      // Reset form khi modal đóng
       form.resetFields();
+      setCurrentPreviewImages({});
+      setIsInitialized(false);
     }
-  }, [isOpen, formFields, form]);
+  }, [isOpen, form, isInitialized]);
+
+  // Chỉ cập nhật preview images khi formFields thay đổi, không động vào form values
+  useEffect(() => {
+    if (isOpen && isInitialized) {
+      const previewImages = formFields.reduce((images: Record<string, string>, field: Field) => {
+        if (field.type === "upload" && field.previewImage) {
+          images[field.name] = field.previewImage;
+        }
+        return images;
+      }, {});
+      setCurrentPreviewImages(prev => ({
+        ...prev,
+        ...previewImages
+      }));
+    }
+  }, [formFields, isOpen, isInitialized]);
 
   const onFinish = (values: any) => {
+    console.log("=== FORMMODAL SUBMIT ===");
+    console.log("Form values:", values);
+    console.log("Keys:", Object.keys(values));
+    console.log("tag_ids value:", values.tag_ids);
+    console.log("=== END FORMMODAL SUBMIT ===");
     if (onSubmit) onSubmit(values);
   };
+
   const renderField = (field: Field) => {
     const validationRules = [];
 
@@ -80,14 +123,85 @@ const FormModal: React.FC<FormModalProps> = ({
           />
         );
       case "upload":
+        const currentPreview = currentPreviewImages[field.name] || field.previewImage;
         return (
-          <Upload beforeUpload={() => false} multiple listType="text">
-            <Button icon={<UploadOutlined />}>Chọn file</Button>
-          </Upload>
+          <div className="flex flex-col gap-2">
+            <Upload
+              listType="picture-card"
+              className="avatar-uploader"
+              showUploadList={{
+                showPreviewIcon: true,
+                showRemoveIcon: true,
+                showDownloadIcon: false,
+              }}
+              maxCount={1}
+              {...field.uploadProps}
+              onChange={(info) => {
+                if (field.uploadProps?.onChange) {
+                  field.uploadProps.onChange(info);
+                }
+              }}
+            >
+              {currentPreview ? (
+                <div className="relative w-full h-full group">
+                  <img
+                    src={currentPreview}
+                    alt="preview"
+                    className="w-full h-full object-cover rounded"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                    <span className="text-white text-sm">Thay đổi file</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-400">
+                  <PlusOutlined className="text-2xl mb-2" />
+                  <div className="text-sm">Chọn file</div>
+                  <div className="text-xs mt-1 text-gray-500 text-center">
+                    Hỗ trợ: Ảnh, Video, Audio, PDF, Document
+                  </div>
+                </div>
+              )}
+            </Upload>
+            {currentPreview && (
+              <Button 
+                type="link" 
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  window.open(currentPreview, '_blank');
+                }}
+                className="p-0 text-blue-500 hover:text-blue-700"
+                size="small"
+              >
+                Xem file hiện tại
+              </Button>
+            )}
+          </div>
         );
       case "select":
         return (
-          <Select placeholder={field.placeholder}>
+          <Select 
+            placeholder={field.placeholder}
+            allowClear={field.allowClear}
+          >
+            {field.options?.map((option) => (
+              <Select.Option key={option.value} value={option.value}>
+                {option.label}
+              </Select.Option>
+            ))}
+          </Select>
+        );
+      case "multiselect":
+        return (
+          <Select 
+            mode="multiple"
+            placeholder={field.placeholder}
+            allowClear={field.allowClear}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.children?.toString().toLowerCase() ?? '').includes(input.toLowerCase())
+            }
+          >
             {field.options?.map((option) => (
               <Select.Option key={option.value} value={option.value}>
                 {option.label}
@@ -131,9 +245,28 @@ const FormModal: React.FC<FormModalProps> = ({
           <Form.Item
             key={field.name}
             name={field.name}
-            valuePropName={field.type === "checkbox-group" ? "value" : "value"}
+            valuePropName={
+              field.type === "checkbox-group" 
+                ? "value" 
+                : field.type === "upload" 
+                  ? "fileList" 
+                  : "value"
+            }
+            getValueFromEvent={
+              field.type === "upload" 
+                ? (e) => {
+                    if (Array.isArray(e)) {
+                      return e;
+                    }
+                    return e && e.fileList;
+                  }
+                : undefined
+            }
             initialValue={
-              field.initialValue || (field.type === "checkbox-group" ? [] : "")
+              field.initialValue || 
+              (field.type === "checkbox-group" ? [] : 
+               field.type === "multiselect" ? [] :
+               field.type === "upload" ? [] : "")
             }
             label={
               field.type !== "checkbox" ? (
@@ -142,8 +275,68 @@ const FormModal: React.FC<FormModalProps> = ({
                 </label>
               ) : null
             }
-            // rules={renderField(field).props.rules || []} // Áp dụng các quy tắc xác thực
-            rules={field.rules || renderField(field).props.rules}
+            rules={field.type === "upload" ? 
+              (field.rules || []).map(rule => {
+                // Nếu rule đã có validator, giữ nguyên
+                if (rule.validator) {
+                  return rule;
+                }
+                // Nếu chỉ có required: true, thêm validator với delay
+                if (rule.required) {
+                  return {
+                    validator: (_: any, value: any) => {
+                      return new Promise((resolve, reject) => {
+                        // Thêm delay nhỏ để đảm bảo file đã được set vào form
+                        setTimeout(() => {
+                          if (!value || (Array.isArray(value) && value.length === 0)) {
+                            reject(new Error(rule.message || 'Vui lòng chọn tệp tin!'));
+                            return;
+                          }
+                          
+                          // Kiểm tra xem có file thực sự không
+                          if (Array.isArray(value) && value.length > 0) {
+                            const fileItem = value[0];
+                            console.log("File item in validation:", {
+                              uid: fileItem?.uid,
+                              name: fileItem?.name,
+                              status: fileItem?.status,
+                              hasOriginFileObj: !!fileItem?.originFileObj,
+                              hasFile: !!fileItem?.file,
+                              isFile: fileItem instanceof File,
+                              keys: Object.keys(fileItem || {})
+                            });
+                            
+                            // Kiểm tra các cách khác nhau để có file object
+                            const hasValidFile = !!(
+                              fileItem?.originFileObj || 
+                              fileItem?.file || 
+                              (fileItem instanceof File) ||
+                              (fileItem?.status === 'done' && fileItem?.name) ||
+                              (fileItem?.status === 'uploading' && fileItem?.name)
+                            );
+                            
+                            console.log("Has valid file:", hasValidFile);
+                            
+                            if (!hasValidFile) {
+                              console.log("Validation FAILED: No valid file object");
+                              reject(new Error("File không hợp lệ! Vui lòng chọn lại file."));
+                              return;
+                            }
+                          }
+                          
+                          console.log("Validation PASSED");
+                          console.log("=== END FORMMODAL FILE VALIDATION ===");
+                          resolve(undefined);
+                        }, 100); // Delay 100ms để đảm bảo file đã được process
+                      });
+                    }
+                  };
+                } else {
+                  return rule;
+                }
+              }) : 
+              (field.rules || [])
+            }
             className="mb-4">
             {renderField(field)}
           </Form.Item>

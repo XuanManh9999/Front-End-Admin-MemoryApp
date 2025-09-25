@@ -1,157 +1,197 @@
-# TailAdmin React - Free React Tailwind Admin Dashboard Template
+# CodeZen Admin Dashboard
 
-TailAdmin is a free and open-source admin dashboard template built on **React and Tailwind CSS**, providing developers with everything they need to create a comprehensive, data-driven back-end, 
-dashboard, or admin panel solution for upcoming web projects.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-With TailAdmin, you get access to all the necessary dashboard UI components, elements, and pages required to build a feature-rich and complete dashboard or admin panel. Whether you're building dashboard or admin panel for a complex web application or a simple website, TailAdmin is the perfect solution to help you get up and running quickly.
+<!-- Add other relevant badges here: Build Status, Coverage, etc. -->
+<!-- Example: [![Build Status](https://travis-ci.org/your-username/your-repo.svg?branch=main)](https://travis-ci.org/your-username/your-repo) -->
 
-![TailAdmin React.js Dashboard Preview](./banner.png)
+Giao diện quản trị trung tâm dành cho nền tảng học trực tuyến CodeZen, được xây dựng với **React, TypeScript, Vite, và Tailwind CSS**. Cung cấp bộ công cụ mạnh mẽ để quản lý hiệu quả người dùng, khóa học, nội dung và các hoạt động khác của nền tảng.
 
-## Overview
+## Mục lục
 
-TailAdmin provides essential UI components and layouts for building feature-rich, data-driven admin dashboards and control panels. It's built on:
+- [Giới thiệu](#giới-thiệu)
+- [Tính năng](#tính-năng)
+- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+- [Bắt đầu](#bắt-đầu)
+  - [Điều kiện tiên quyết](#1-điều-kiện-tiên-quyết)
+  - [Cài đặt](#2-cài-đặt)
+  - [Cấu hình](#3-cấu-hình-biến-môi-trường)
+  - [Chạy ứng dụng](#4-chạy-ứng-dụng)
+- [Các Script Lệnh](#các-script-lệnh-chính)
+- [Triển khai](#triển-khai-deployment)
+- [Đóng góp](#đóng-góp-contributing)
+- [Giấy phép](#giấy-phép)
+- [Liên hệ & Hỗ trợ](#liên-hệ--hỗ-trợ)
 
-- React 18 (create-react-app)
-- TypeScript
-- Tailwind CSS
+## Giới thiệu
 
-### Quick Links
-- [✨ Visit Website](https://tailadmin.com)
-- [📄 Documentation](https://tailadmin.com/docs)
-- [⬇️ Download](https://tailadmin.com/download)
-- [🖌️ Figma Design File (Community Edition)](https://www.figma.com/community/file/1214477970819985778)
-- [⚡ Get PRO Version](https://tailadmin.com/pricing)
+**CodeZen Admin Dashboard** là giải pháp toàn diện để quản lý nền tảng học trực tuyến CodeZen. Mục tiêu chính là cung cấp một giao diện trực quan và hiệu quả cho quản trị viên và người điều hành nội dung thực hiện các tác vụ như:
 
-### Demos
-- [Free Version](https://free-react-demo.tailadmin.com/)
-- [Pro Version](https://react-demo.tailadmin.com)
+- Quản lý người dùng (học viên, giảng viên, quản trị viên).
+- Quản lý vòng đời khóa học (tạo, sửa, xóa, xuất bản).
+- Quản lý nội dung bài học và tài liệu.
+- Theo dõi tiến độ học tập và tương tác.
+- Xem báo cáo và phân tích dữ liệu.
+- Cấu hình hệ thống.
 
-### Other Versions
-- [HTML Version](https://github.com/TailAdmin/tailadmin-free-tailwind-dashboard-template)
-- [Next.js Version](https://github.com/TailAdmin/free-nextjs-admin-dashboard)
-- [Vue.js Version](https://github.com/TailAdmin/vue-tailwind-admin-dashboard)
+## Tính năng
 
+- **Giao diện Hiện đại & Responsive:** Xây dựng với Tailwind CSS, tối ưu cho mọi thiết bị.
+- **Quản lý Toàn diện:** Các module chức năng chuyên biệt.
+- **Trực quan hóa Dữ liệu:** Tích hợp biểu đồ với ApexCharts.
+- **Type Safety:** Phát triển với TypeScript tăng độ tin cậy.
+- **Hiệu suất Cao:** Vite cho trải nghiệm phát triển và build nhanh chóng.
+- **Tùy chỉnh Dễ dàng:** Kiến trúc component linh hoạt.
+- **Dark Mode:** Hỗ trợ giao diện tối.
 
-## Installation
+## Công nghệ sử dụng
 
-### Prerequisites
-To get started with TailAdmin, ensure you have the following prerequisites installed and set up:
+- **Framework:** React 18+
+- **Ngôn ngữ:** TypeScript
+- **Build Tool:** Vite
+- **Styling:** Tailwind CSS
+- **Routing:** React Router
+- **Biểu đồ:** ApexCharts
+- **HTTP Client:** Axios
+- **Linting:** ESLint
 
-- Node.js 18.x or later (recommended to use Node.js 20.x or later)
+## Cấu trúc thư mục
 
-### Cloning the Repository
-Clone the repository using the following command:
+```text
+├── public/              # nhưng nội dung công khai
+├── src/                 # Mã nguồn ứng dụng
+│   ├── assets/          # Hình ảnh, fonts,...
+│   ├── components/      # UI components tái sử dụng
+│   ├── contexts/        # React Context providers
+│   ├── hooks/           # Custom React Hooks
+│   ├── layouts/         # Bố cục trang (Sidebar, Header,...)
+│   ├── pages/           # Components cho từng trang/route
+│   ├── routes/          # Cấu hình React Router
+│   ├── services/        # Logic gọi API (Axios instances, endpoints)
+│   ├── store/           # State management (Redux, Zustand,...)
+│   ├── types/           # Định nghĩa kiểu TypeScript
+│   ├── utils/           # Hàm tiện ích
+│   └── main.tsx         # Entry point của ứng dụng
+├── .env                 # (Không commit) Biến môi trường local
+├── .env.example         # File mẫu biến môi trường (Commit vào Git)
+├── .eslintrc.cjs        # Cấu hình ESLint
+├── .gitignore           # Files/folders bị Git bỏ qua
+├── index.html           # Template HTML chính cho Vite
+├── package.json         # Metadata dự án và dependencies
+├── postcss.config.js    # Cấu hình PostCSS
+├── tailwind.config.js   # Cấu hình Tailwind CSS
+├── tsconfig.json        # Cấu hình TypeScript chung
+├── tsconfig.node.json   # Cấu hình TS cho môi trường Node (Vite)
+└── vite.config.ts       # Cấu hình Vite
+```
+## Bắt đầu
+
+Thực hiện các bước sau để cài đặt và chạy dự án trên máy cục bộ của bạn.
+
+### 1. Điều kiện tiên quyết
+
+Đảm bảo hệ thống của bạn đã cài đặt:
+
+- **Node.js:** `v18.x` trở lên (Khuyến nghị `v20.x`+). Kiểm tra: `node -v`
+  - _(Khuyến nghị)_ Sử dụng [nvm](https://github.com/nvm-sh/nvm) hoặc [nvm-windows](https://github.com/coreybutler/nvm-windows) để quản lý phiên bản Node.
+- **npm:** `v9.x`+ (hoặc phiên bản tương thích đi kèm Node.js). Kiểm tra: `npm -v`
+- **hoặc yarn:** `v1.22.x`+. Kiểm tra: `yarn -v`
+- **Git:** Kiểm tra: `git --version`
+
+### 2. Cài đặt
+
+1.  **Clone Repository:**
+
+    ```bash
+    git clone <YOUR_REPOSITORY_URL>
+    cd Front-end-admin
+    ```
+
+    _(Thay thế `<YOUR_REPOSITORY_URL>` bằng URL Git thực tế của bạn)_
+
+2.  **Cài đặt Dependencies:**
+
+    ```bash
+    # Sử dụng npm
+    npm install
+    # Hoặc nếu gặp lỗi peer dependency với React 18:
+    # npm install --legacy-peer-deps
+
+    # Hoặc sử dụng yarn
+    # yarn install
+    ```
+
+### 3. Cấu hình Biến Môi trường
+
+Ứng dụng cần các biến môi trường để kết nối với backend và các dịch vụ khác.
+
+1.  **Tạo file `.env`:** Sao chép từ file mẫu:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    _(Quan trọng: Đảm bảo bạn đã có file `.env.example` trong repository liệt kê tất cả các biến cần thiết)_
+
+2.  **Cập nhật `.env`:** Mở file `.env` và điền các giá trị thực tế.
+    ```dotenv
+    # Ví dụ
+    VITE_API_BASE_URL=http://your-api-backend.com/api
+    VITE_ANALYTICS_KEY=your_analytics_key
+    ```
+    - Biến môi trường phía client trong Vite **phải** bắt đầu bằng `VITE_`.
+    - File `.env` chứa thông tin nhạy cảm và **không được commit** vào Git (đảm bảo `.env` nằm trong `.gitignore`).
+
+### 4. Chạy ứng dụng
+
+Khởi động server phát triển:
 
 ```bash
-git clone https://github.com/TailAdmin/free-react-tailwind-admin-dashboard.git
+npm run dev
+# hoặc
+# yarn dev
 ```
 
-> Windows Users: place the repository near the root of your drive if you face issues while cloning.
+Mở trình duyệt và truy cập `http://localhost:5173` (hoặc cổng được Vite chỉ định).
 
-1. Install dependencies:
-    ```bash
-    npm install
-    # or
-    yarn install
-    ```
-    > On `npm` some included packages can cause peer-deps issue with React 18 while installing.
-    >
-    > Use the `--legacy-peer-deps` flag, at the end of the installation command, as a workaround for that.
+## Các Script Lệnh Chính
 
-2. Start the development server:
-    ```bash
-    npm run dev
-    # or
-    yarn dev
-    ```
+- `dev`: Chạy ứng dụng ở chế độ development với Hot Reloading.
+- `build`: Build ứng dụng cho môi trường production (output vào thư mục `dist`).
+- `preview`: Xem trước bản build production trên server cục bộ.
+- `lint`: Kiểm tra lỗi và style code bằng ESLint.
 
-## Components
+_(Xem thêm các script khác trong `package.json`)_
 
-TailAdmin is a pre-designed starting point for building a web-based dashboard using React.js and Tailwind CSS. The template includes:
+## Triển khai (Deployment)
 
-- Sophisticated and accessible sidebar
-- Data visualization components
-- Prebuilt profile management and 404 page
-- Tables and Charts(Line and Bar)
-- Authentication forms and input elements
-- Alerts, Dropdowns, Modals, Buttons and more
-- Can't forget Dark Mode 🕶️
+Thư mục `dist` sau khi chạy `npm run build` chứa các file tĩnh. Bạn có thể triển khai nó lên các nền tảng hosting tĩnh như:
 
-All components are built with React and styled using Tailwind CSS for easy customization.
+- Vercel
+- Netlify
+- AWS S3/CloudFront
+- GitHub Pages
+- Server riêng (Nginx, Apache,...)
 
-## Feature Comparison
+_Lưu ý:_ Đối với SPA, cần cấu hình server để xử lý client-side routing (chuyển hướng mọi request không khớp file về `index.html`). Tham khảo tài liệu của nhà cung cấp hosting.
 
-### Free Version
-- 1 Unique Dashboard
-- 30+ dashboard components
-- 50+ UI elements
-- Basic Figma design files
-- Community support
+## Đóng góp (Contributing)
 
-### Pro Version
-- 5 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, Stocks (more coming soon)
-- 400+ dashboard components and UI elements
-- Complete Figma design file
-- Email support
+Chúng tôi hoan nghênh mọi đóng góp! Vui lòng đọc file `CONTRIBUTING.md` (nếu có) để biết chi tiết về quy trình báo lỗi, đề xuất tính năng và gửi Pull Request.
 
-To learn more about pro version features and pricing, visit our [pricing page](https://tailadmin.com/pricing).
+_(Gợi ý: Tạo file `CONTRIBUTING.md` để hướng dẫn chi tiết hơn)_
 
-## Changelog
+## Giấy phép
 
-### Version 2.0.0 - [February 2025]
-A major update with comprehensive redesign and modern React patterns implementation.
+Dự án này được cấp phép theo **Giấy phép MIT**. Xem chi tiết tại file [LICENSE.md](./LICENSE.md).
 
-#### Major Improvements
-- Complete UI redesign with modern React patterns
-- New features: collapsible sidebar, chat, and calendar
-- Improved performance and accessibility
-- Updated data visualization using ApexCharts
+## Liên hệ & Hỗ trợ
 
-#### Key Features
-- Redesigned dashboards (Ecommerce, Analytics, Marketing, CRM)
-- Enhanced navigation with React Router integration
-- Advanced tables with sorting and filtering
-- Calendar with drag-and-drop support
-- New UI components and improved existing ones
+- Nếu gặp sự cố hoặc có câu hỏi, vui lòng tạo **Issue** trên GitHub: `<YOUR_REPOSITORY_ISSUES_URL>`
+  _(Thay thế `<YOUR_REPOSITORY_ISSUES_URL>` bằng link đến trang Issues của repo)_
+- Để liên hệ trực tiếp, vui lòng gửi email đến: `<YOUR_CONTACT_EMAIL>` _(Tùy chọn)_
 
-#### Breaking Changes
-- Updated sidebar component API
-- Migrated charts to ApexCharts
-- Revised authentication system
+---
 
-[Read more](https://tailadmin.com/docs/update-logs/react) on this release.
-
-### Version 1.3.7 - [June 20, 2024]
-
-#### Enhancements
-
-1. Remove Repetition of DefaultLayout in every Pages
-2. Add ClickOutside Component for reduce repeated functionality in Header Message, Notification and User Dropdowns.
-
-### Version 1.3.6 - [Jan 31, 2024]
-
-#### Enhancements
-
-1. Integrate flatpickr in [Date Picker/Form Elements]
-2. Change color after select an option [Select Element/Form Elements].
-3. Make it functional [Multiselect Dropdown/Form Elements].
-4. Make best value editable [Pricing Table One/Pricing Table].
-5. Rearrange Folder structure.
-
-### Version 1.2.0 - [Apr 28, 2023]
-
-- Add Typescript in TailAdmin React.
-
-### Version 1.0.0 - Initial Release - [Mar 13, 2023]
-
-- Initial release of TailAdmin React.
-
-
-
-## License
-
-TailAdmin React.js Free Version is released under the MIT License.
-
-## Support
-
-If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing and maintaining this template.
+Cảm ơn bạn đã sử dụng CodeZen Admin Dashboard! ⭐

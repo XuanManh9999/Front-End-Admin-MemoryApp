@@ -7,7 +7,7 @@ import Button from "../ui/button/Button";
 import { useNavigate } from "react-router";
 import { apiLogin } from "../../services/auth";
 import { message } from "antd";
-import { getCurrentUser } from "../../services/user";
+// import { getCurrentUser } from "../../services/user";
 import { Auth } from "../../interface/auth";
 export default function SignInForm() {
   const nav = useNavigate();
@@ -27,33 +27,22 @@ export default function SignInForm() {
   };
 
   const handleLoginAdmin = async () => {
-    const { status, refreshToken, accessToken } = await apiLogin(dataLogin);
+    const {
+      status,
+      data
+    } = await apiLogin(dataLogin);
+
     if (status === 200) {
-      // Set accessToken hết hạn trong 1 giờ
-      Cookies.set("accessTokenAdmin", accessToken, { expires: 1 / 24 }); // 1 giờ = 1/24 ngày
-      // Set refreshToken hết hạn trong 1 ngày
-      Cookies.set("refreshTokenAdmin", refreshToken, { expires: 1 }); // 1 ngày = 1 ngày
-
-      const { data, status: statusCurr } = await getCurrentUser();
-
-      if (statusCurr === 200 && data && data.roles[0].name === "ROLE_ADMIN") {
-        message.success("Đăng nhập thành công");
-        localStorage.setItem("user", JSON.stringify(data));
-        localStorage.setItem("isLogin", "true");
-        setTimeout(() => {
-          nav("/");
-        }, 1000);
-      } else {
-        message.error(
-          "Đăng nhập thất bại bạn không có quyền truy cập vào trang này"
-        );
-        Cookies.remove("accessTokenAdmin");
-        Cookies.remove("refreshTokenAdmin");
-      }
+      Cookies.set("accessTokenAdmin", data.assessToken, { expires: 1 / 24 });
+      Cookies.set("refreshTokenAdmin", data.refreshToken, { expires: 1 });
+      message.success("Đăng nhập thành công");
+      setTimeout(() => {
+        nav("/");
+      }, 1000);
     } else {
-      message.error(
-        "Đăng nhập không thành công vui lòng kiểm tra lại tài khoản và mật khẩu"
-      );
+      message.error("Đăng nhập thất bại thông tin tài khoản không chính xác");
+      Cookies.remove("accessTokenAdmin");
+      Cookies.remove("refreshTokenAdmin");
     }
   };
 

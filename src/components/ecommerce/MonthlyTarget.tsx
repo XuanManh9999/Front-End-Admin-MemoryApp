@@ -111,8 +111,8 @@ export default function MonthlyTarget() {
           </span>
         </div>
         <p className="mx-auto mt-10 w-full max-w-[380px] text-center text-sm text-gray-500 sm:text-base">
-          Mục tiêu hàng tháng của bạn là 1000 files được tải lên, bạn đã hoàn
-          thành 75% mục tiêu này trong tháng này.
+          Mục tiêu hàng tháng của bạn là 1000 tài nguyên được tải lên, bạn đã
+          hoàn thành 75% mục tiêu này trong tháng này.
         </p>
       </div>
 
