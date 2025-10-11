@@ -1,10 +1,10 @@
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import PageMeta from "../common/PageMeta";
-import ComponentCard from "../common/ComponentCard";
 import ReusableTable from "../common/ReusableTable";
 import { useEffect, useState } from "react";
 import { Input, Select, Card, Statistic, Modal } from "antd";
 import Label from "../form/Label";
+import Pagination from "../pagination";
 import { 
   BarChart, 
   Bar, 
@@ -20,18 +20,12 @@ import {
 import {
   getDashboard,
   getCombinedStats,
-  getTopDownloadedResources,
-  getResourcesByCategory,
   getResourcesDetailsByPeriod,
   Dashboard,
   CombinedStats,
-  TopDownloadResource,
-  CategoryStats,
   ResourceDetail
 } from "../../services/dashboard";
 
-// Modern color palette for charts
-const COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#84cc16'];
 
 // Custom chart colors
 const CHART_COLORS = {
@@ -60,8 +54,6 @@ export default function ManageReport() {
   // Dashboard data states
   const [dashboardData, setDashboardData] = useState<Dashboard | null>(null);
   const [combinedStats, setCombinedStats] = useState<CombinedStats | null>(null);
-  const [topResources, setTopResources] = useState<TopDownloadResource[]>([]);
-  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   
   // Filter states
   const [period, setPeriod] = useState<string>("month");
@@ -71,26 +63,62 @@ export default function ManageReport() {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedPeriodData, setSelectedPeriodData] = useState<ResourceDetail[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+  const [allResourcesData, setAllResourcesData] = useState<ResourceDetail[]>([]);
+  
+  // Pagination and search states for modal
+  const [modalPage, setModalPage] = useState(0);
+  const [modalLimit, setModalLimit] = useState(10);
+  const [modalSearch, setModalSearch] = useState<string>("");
+  const [filteredData, setFilteredData] = useState<ResourceDetail[]>([]);
 
   // Load dashboard data
   useEffect(() => {
     loadDashboardData();
   }, [period, year]);
 
+  // Handle search and filtering
+  useEffect(() => {
+    if (!allResourcesData.length) {
+      setFilteredData([]);
+      return;
+    }
+
+    let filtered = [...allResourcesData];
+    
+    // Apply search filter
+    if (modalSearch.trim()) {
+      const searchTerm = modalSearch.toLowerCase().trim();
+      filtered = filtered.filter(item => 
+        item.title.toLowerCase().includes(searchTerm) ||
+        item.description.toLowerCase().includes(searchTerm) ||
+        item.category_name.toLowerCase().includes(searchTerm) ||
+        item.user_name.toLowerCase().includes(searchTerm) ||
+        item.file_type.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    setFilteredData(filtered);
+    setModalPage(0); // Reset to first page when search changes
+  }, [allResourcesData, modalSearch]);
+
+  // Handle pagination
+  useEffect(() => {
+    const startIndex = modalPage * modalLimit;
+    const endIndex = startIndex + modalLimit;
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+    setSelectedPeriodData(paginatedData);
+  }, [filteredData, modalPage, modalLimit]);
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [overview, combined, top, categories] = await Promise.all([
+      const [overview, combined] = await Promise.all([
         getDashboard(),
-        getCombinedStats(period, year || undefined),
-        getTopDownloadedResources(10),
-        getResourcesByCategory()
+        getCombinedStats(period, year || undefined)
       ]);
       
       setDashboardData(overview);
       setCombinedStats(combined);
-      setTopResources(top);
-      setCategoryStats(categories);
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra khi tải dữ liệu");
     } finally {
@@ -106,8 +134,14 @@ export default function ManageReport() {
       const details = await getResourcesDetailsByPeriod(period, year || undefined, data.period);
       console.log("Check details", details);
       
-      setSelectedPeriodData(details.resources);
+      // Store all data for filtering and pagination
+      setAllResourcesData(details.resources);
       setSelectedPeriod(`${chartType} - tháng ${data.period}`);
+      
+      // Reset modal states
+      setModalPage(0);
+      setModalSearch("");
+      
       setDetailModalVisible(true);
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra khi tải chi tiết");
@@ -116,8 +150,25 @@ export default function ManageReport() {
     }
   };
 
-  const handleDelete = (_id: string | number) => {
-    // Implementation for delete if needed
+
+  const handleModalSearch = (value: string) => {
+    setModalSearch(value);
+  };
+
+  const handleModalPageChange = (newLimit: number, newPage: number) => {
+    setModalLimit(newLimit);
+    setModalPage(newPage);
+  };
+
+  const handleModalLimitChange = (newLimit: number) => {
+    setModalLimit(newLimit);
+    setModalPage(0);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      // Search is handled by useEffect, no need to do anything here
+    }
   };
 
   return (
@@ -265,7 +316,15 @@ export default function ManageReport() {
             </div>
             <div className="p-6">
               <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={combinedStats.resources} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <LineChart 
+                  data={combinedStats.resources} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  onClick={(data: any) => {
+                    if (data && data.activeLabel) {
+                      handleChartClick({period: data.activeLabel}, "Tài nguyên");
+                    }
+                  }}
+                >
                   <defs>
                     <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3}/>
@@ -308,11 +367,9 @@ export default function ManageReport() {
                       r: 12, 
                       fill: CHART_COLORS.primary,
                       stroke: 'white',
-                      strokeWidth: 3,
-                      drop: true
+                      strokeWidth: 3
                     }}
                     name="Số lượng tài nguyên"
-                    onClick={(data: {period: string}) => handleChartClick(data, "Tài nguyên")}
                     style={{ cursor: 'pointer' }}
                     fill="url(#colorGradient)"
                   />
@@ -342,7 +399,15 @@ export default function ManageReport() {
             </div>
             <div className="p-6">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={combinedStats.resources} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <BarChart 
+                  data={combinedStats.resources} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  onClick={(data: any) => {
+                    if (data && data.activeLabel) {
+                      handleChartClick({period: data.activeLabel}, "Tài nguyên");
+                    }
+                  }}
+                >
                   <defs>
                     <linearGradient id="resourceGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor={CHART_COLORS.info} />
@@ -376,7 +441,6 @@ export default function ManageReport() {
                     dataKey="count" 
                     fill="url(#resourceGradient)"
                     radius={[6, 6, 0, 0]}
-                    onClick={(data: {period: string}) => handleChartClick(data, "Tài nguyên")}
                     style={{ cursor: 'pointer' }}
                   />
                 </BarChart>
@@ -452,31 +516,90 @@ export default function ManageReport() {
           <div className="flex items-center gap-2">
             <span className="text-xl">📋</span>
             <span className="text-lg font-semibold text-gray-800">Chi tiết {selectedPeriod}</span>
+            <span className="text-sm text-gray-500 ml-2">
+              ({filteredData.length} tài nguyên)
+            </span>
           </div>
         }
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={() => {
+          setDetailModalVisible(false);
+          setModalSearch("");
+          setModalPage(0);
+          setAllResourcesData([]);
+          setFilteredData([]);
+        }}
         footer={null}
         width={1200}
         className="top-4"
         styles={{
-          body: { maxHeight: '70vh', overflowY: 'auto' }
+          body: { maxHeight: '80vh', overflowY: 'auto' }
         }}
       >
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <ReusableTable
-            error=""
-            title="📊 Danh sách tài nguyên chi tiết"
-            data={selectedPeriodData}
-            columns={resourceDetailColumns}
-            isLoading={loading}
-          />
-          {selectedPeriodData.length === 0 && !loading && (
-            <div className="text-center py-8 text-gray-500">
-              <div className="text-4xl mb-2">📭</div>
-              <p>Không có dữ liệu trong khoảng thời gian này</p>
+        <div className="space-y-4">
+          {/* Search Section */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Label htmlFor="modalSearch" className="text-sm font-medium text-gray-700">
+                  🔍 Tìm kiếm tài nguyên
+                </Label>
+                <Input
+                  id="modalSearch"
+                  placeholder="Tìm theo tiêu đề, mô tả, danh mục, người tạo, loại file..."
+                  value={modalSearch}
+                  onChange={(e) => handleModalSearch(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  size="large"
+                  className="mt-1"
+                  allowClear
+                />
+              </div>
+              <div className="text-sm text-gray-500 mt-6">
+                Tìm thấy: <strong>{filteredData.length}</strong> / {allResourcesData.length} tài nguyên
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* Table Section */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <ReusableTable
+              error=""
+              title="📊 Danh sách tài nguyên chi tiết"
+              data={selectedPeriodData}
+              columns={resourceDetailColumns}
+              isLoading={loading}
+            />
+            
+            {/* Pagination */}
+            {filteredData.length > 0 && (
+              <div className="mt-4">
+                <Pagination
+                  limit={modalLimit}
+                  offset={modalPage}
+                  totalPages={Math.ceil(filteredData.length / modalLimit)}
+                  onPageChange={handleModalPageChange}
+                  onLimitChange={handleModalLimitChange}
+                />
+              </div>
+            )}
+
+            {/* No Data Message */}
+            {filteredData.length === 0 && !loading && allResourcesData.length > 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">🔍</div>
+                <p className="text-lg font-medium">Không tìm thấy tài nguyên nào</p>
+                <p className="text-sm">Thử thay đổi từ khóa tìm kiếm</p>
+              </div>
+            )}
+
+            {allResourcesData.length === 0 && !loading && (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">📭</div>
+                <p>Không có dữ liệu trong khoảng thời gian này</p>
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
     </div>
