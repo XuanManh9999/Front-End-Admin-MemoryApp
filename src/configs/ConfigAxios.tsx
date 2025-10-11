@@ -1,7 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 const configApi = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: "https://backend-menory-app.vercel.app",
 });
 
 configApi.interceptors.request.use(
@@ -31,7 +31,7 @@ configApi.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          "http://localhost:3000/admin/auth/refresh-token",
+          "https://backend-menory-app.vercel.app/admin/auth/refresh-token",
           {},
           {
             headers: {
