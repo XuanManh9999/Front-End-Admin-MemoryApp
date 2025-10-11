@@ -22,7 +22,9 @@ import {
   FaFolderOpen,    
   FaChartBar,       
   FaSignOutAlt,
-  FaFolder
+  FaFolder,
+  FaCreditCard,
+  FaCalendarAlt
 } from "react-icons/fa";
 
 const navItems: NavItem[] = [
@@ -55,7 +57,16 @@ const navItems: NavItem[] = [
     name: "Quản lý bộ sưu tập",
     icon: <FaFolder />,
     path: "/manage-collection",
-  },  
+  },
+  {
+    icon: <FaCreditCard />,
+    name: "Quản lý thanh toán",
+    subItems: [
+      { name: "Dashboard thanh toán", path: "/payment-dashboard", pro: false },
+      { name: "Danh sách thanh toán", path: "/manage-payment", pro: false },
+      { name: "Gói sắp hết hạn", path: "/manage-renewals", pro: false },
+    ],
+  },
   {
     name: "Báo cáo thống kê",
     icon: <FaChartBar />,
