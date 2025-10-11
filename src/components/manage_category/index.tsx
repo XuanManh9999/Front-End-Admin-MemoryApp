@@ -17,7 +17,38 @@ import type { RcFile } from 'antd/es/upload/interface';
 const columns: { key: any; label: string; render?: (value: any, record: any) => React.ReactNode }[] = [
   { key: "id", label: "ID" },
   { key: "name", label: "Tên danh mục" },
-  { key: "description", label: "Mô tả" },
+  { 
+    key: "description", 
+    label: "Mô tả",
+    render: (value: string) => {
+      if (!value) return <span className="text-gray-400 italic">Chưa có mô tả</span>;
+      
+      // Extract plain text for tooltip
+      const plainText = value.replace(/<[^>]*>/g, '').trim();
+      
+      return (
+        <div className="max-w-xs">
+          <div 
+            className="line-clamp-3 text-sm leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: value }}
+            title={plainText}
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word'
+            }}
+          />
+          {plainText.length > 100 && (
+            <span className="text-xs text-gray-500 mt-1 block">
+              ({plainText.length} ký tự)
+            </span>
+          )}
+        </div>
+      );
+    }
+  },
   { 
     key: "img", 
     label: "Hình ảnh",
@@ -142,7 +173,7 @@ export default function ManageCategory() {
       {
         name: "description",
         label: "Mô tả",
-        type: "textarea" as const,
+        type: "richtext" as const,
         placeholder: "Nhập mô tả danh mục",
         initialValue: currentEditItem.description,
        
@@ -190,7 +221,7 @@ export default function ManageCategory() {
       {
         name: "description",
         label: "Mô tả",
-        type: "textarea" as const,
+        type: "richtext" as const,
         placeholder: "Nhập mô tả danh mục",
         
       },
@@ -282,6 +313,11 @@ export default function ManageCategory() {
   const handleSubmitUpdateCategory = async (data: any) => {
     try {
       setSubmitLoading(true);
+      console.log("=== HANDLE UPDATE CATEGORY START ===");
+      console.log("Update form data:", data);
+      console.log("Update description value:", data.description);
+      console.log("Update description type:", typeof data.description);
+      
       const formData = new FormData();
       formData.append('name', data.name);
       formData.append('description', data.description);
@@ -318,6 +354,8 @@ export default function ManageCategory() {
   const handleAddCategory = async (data: any) => {
     console.log("=== HANDLE ADD CATEGORY START ===");
     console.log("Form data:", data);
+    console.log("Description value:", data.description);
+    console.log("Description type:", typeof data.description);
     console.log("Selected file from state:", selectedFile);
     console.log("Preview image:", previewImage);
     

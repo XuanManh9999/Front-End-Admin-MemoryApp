@@ -2,6 +2,74 @@ import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Upload, Modal, Select, Checkbox } from "antd";
 import { PlusOutlined, EyeOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+
+// Wrapper component for ReactQuill to work with Ant Design Form
+const ReactQuillWrapper: React.FC<{
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}> = ({ value, onChange, placeholder }) => {
+  return (
+    <div className="richtext-editor-wrapper">
+      <ReactQuill
+        theme="snow"
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder}
+        modules={{
+          toolbar: [
+            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'script': 'sub'}, { 'script': 'super' }],
+            [{ 'indent': '-1'}, { 'indent': '+1' }],
+            [{ 'direction': 'rtl' }],
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'font': [] }],
+            [{ 'align': [] }],
+            ['clean'],
+            ['link', 'image', 'video']
+          ],
+        }}
+        formats={[
+          'header', 'font', 'size',
+          'bold', 'italic', 'underline', 'strike', 'blockquote',
+          'list', 'bullet', 'indent',
+          'link', 'image', 'video', 'align', 'color', 'background',
+          'script', 'direction'
+        ]}
+        style={{ minHeight: '200px' }}
+      />
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .richtext-editor-wrapper .ql-editor {
+            min-height: 150px !important;
+            font-family: inherit;
+          }
+          .richtext-editor-wrapper .ql-toolbar {
+            border-top: 1px solid #ccc;
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+            border-bottom: none;
+          }
+          .richtext-editor-wrapper .ql-container {
+            border-bottom: 1px solid #ccc;
+            border-left: 1px solid #ccc;
+            border-right: 1px solid #ccc;
+            border-top: none;
+          }
+          .richtext-editor-wrapper .ql-editor.ql-blank::before {
+            color: #999;
+            font-style: normal;
+          }
+        `
+      }} />
+    </div>
+  );
+};
 
 interface Field {
   name: string;
@@ -14,6 +82,7 @@ interface Field {
     | "number"
     | "email"
     | "textarea"
+    | "richtext"
     | "upload"
     | "select"
     | "multiselect"
@@ -102,6 +171,8 @@ const FormModal: React.FC<FormModalProps> = ({
     console.log("=== FORMMODAL SUBMIT ===");
     console.log("Form values:", values);
     console.log("Keys:", Object.keys(values));
+    console.log("description value:", values.description);
+    console.log("description type:", typeof values.description);
     console.log("tag_ids value:", values.tag_ids);
     console.log("=== END FORMMODAL SUBMIT ===");
     if (onSubmit) onSubmit(values);
@@ -119,6 +190,12 @@ const FormModal: React.FC<FormModalProps> = ({
         return (
           <Input.TextArea
             className="max-h-[200px]"
+            placeholder={field.placeholder}
+          />
+        );
+      case "richtext":
+        return (
+          <ReactQuillWrapper
             placeholder={field.placeholder}
           />
         );
