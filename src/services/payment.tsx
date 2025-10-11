@@ -64,7 +64,7 @@ export const getRegistrationStats = async (params: {
     if (to) q.set("to", to);
 
     const res = await configApi.get<GetRegistrationStatsResponse>(
-      `/admin/payment/stats/registrations?${q.toString()}`
+      `/admin/manage-payment/stats/registrations?${q.toString()}`
     );
     return res.data;
   } catch (error) {
