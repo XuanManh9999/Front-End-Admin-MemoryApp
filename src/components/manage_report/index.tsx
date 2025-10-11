@@ -1,155 +1,607 @@
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import PageMeta from "../common/PageMeta";
-import ComponentCard from "../common/ComponentCard";
 import ReusableTable from "../common/ReusableTable";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
-import { Input } from "antd";
-import Pagination from "../pagination";
+import { Input, Select, Card, Statistic, Modal } from "antd";
 import Label from "../form/Label";
-import { IoIosAdd } from "react-icons/io";
+import Pagination from "../pagination";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  LineChart,
+  Line
+} from 'recharts';
+import {
+  getDashboard,
+  getCombinedStats,
+  getResourcesDetailsByPeriod,
+  Dashboard,
+  CombinedStats,
+  ResourceDetail
+} from "../../services/dashboard";
 
-const data = [
-  {
-    id: 8,
-    username: "admin",
-    totalCourses: 0,
-    completedCourses: 0,
-    totalLearningTime: 0, // giờ
-    averageRating: null,
-    lastLogin: "2025-04-15T12:10:00.000+00:00",
-  },
-  {
-    id: 9,
-    username: "Nguyễn Văn A",
-    totalCourses: 6,
-    completedCourses: 4,
-    totalLearningTime: 35.5,
-    averageRating: 4.6,
-    lastLogin: "2025-04-16T08:45:00.000+00:00",
-  },
-  {
-    id: 10,
-    username: "Nguyễn Văn B",
-    totalCourses: 3,
-    completedCourses: 1,
-    totalLearningTime: 12.25,
-    averageRating: 4.2,
-    lastLogin: "2025-04-15T21:30:00.000+00:00",
-  },
-  {
-    id: 11,
-    username: "Nguyễn Văn C",
-    totalCourses: 5,
-    completedCourses: 5,
-    totalLearningTime: 40.0,
-    averageRating: 4.9,
-    lastLogin: "2025-04-16T07:10:00.000+00:00",
-  },
-];
-const columns: { key: any; label: string }[] = [
+
+// Custom chart colors
+const CHART_COLORS = {
+  primary: '#6366f1',
+  secondary: '#8b5cf6', 
+  success: '#10b981',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  info: '#06b6d4'
+};
+
+const resourceDetailColumns: { key: any; label: string }[] = [
   { key: "id", label: "ID" },
-  { key: "username", label: "Tên người dùng" },
-  { key: "totalCourses", label: "Số tài nguyên đã tải xuống" },
-  { key: "completedCourses", label: "Số lượng tài nguyên đã tải lên" },
-  { key: "totalLearningTime", label: "Tổng thời gian hoạt động (giờ)" },
-  { key: "averageRating", label: "Điểm đánh giá trung bình" },
-  { key: "lastLogin", label: "Lần đăng nhập gần nhất" },
+  { key: "title", label: "Tiêu đề" },
+  { key: "file_type", label: "Loại file" },
+  { key: "downloads", label: "Lượt tải" },
+  { key: "category_name", label: "Danh mục" },
+  { key: "user_name", label: "Người tạo" },
+  { key: "created_at", label: "Ngày tạo" },
+  { key: "status", label: "Trạng thái" },
 ];
 export default function ManageReport() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [offset, setOffset] = useState(Number(searchParams.get("offset")) || 0);
-  const [openModal, setOpenModal] = useState(false);
-  const [quantity, setQuantity] = useState(
-    Number(searchParams.get("quantity")) || 20
-  );
-
-  // Set default value of quantity và offset if do not have
-  useEffect(() => {
-    if (!searchParams.get("limit") || !searchParams.get("offset")) {
-      setSearchParams((prev: any) => {
-        const newParams = new URLSearchParams(prev);
-        if (!newParams.get("limit")) newParams.set("limit", "5");
-        if (!newParams.get("offset")) newParams.set("offset", "0");
-        return newParams;
-      });
-    }
-  }, [searchParams, setSearchParams]);
-  // const [type, setType] = useState<ITypeNumber | undefined>(undefined);
-  // const [types, setTypes] = useState<ITypeNumber[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [errorData, setErrorData] = useState("");
+  
+  // Dashboard data states
+  const [dashboardData, setDashboardData] = useState<Dashboard | null>(null);
+  const [combinedStats, setCombinedStats] = useState<CombinedStats | null>(null);
+  
+  // Filter states
+  const [period, setPeriod] = useState<string>("month");
+  const [year, setYear] = useState<string>("");
+  
+  // Modal states
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedPeriodData, setSelectedPeriodData] = useState<ResourceDetail[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("");
+  const [allResourcesData, setAllResourcesData] = useState<ResourceDetail[]>([]);
+  
+  // Pagination and search states for modal
+  const [modalPage, setModalPage] = useState(0);
+  const [modalLimit, setModalLimit] = useState(10);
+  const [modalSearch, setModalSearch] = useState<string>("");
+  const [filteredData, setFilteredData] = useState<ResourceDetail[]>([]);
 
-  const onEdit = (item: any) => {};
-  const onDelete = (id: string) => {};
+  // Load dashboard data
+  useEffect(() => {
+    loadDashboardData();
+  }, [period, year]);
+
+  // Handle search and filtering
+  useEffect(() => {
+    if (!allResourcesData.length) {
+      setFilteredData([]);
+      return;
+    }
+
+    let filtered = [...allResourcesData];
+    
+    // Apply search filter
+    if (modalSearch.trim()) {
+      const searchTerm = modalSearch.toLowerCase().trim();
+      filtered = filtered.filter(item => 
+        item.title.toLowerCase().includes(searchTerm) ||
+        item.description.toLowerCase().includes(searchTerm) ||
+        item.category_name.toLowerCase().includes(searchTerm) ||
+        item.user_name.toLowerCase().includes(searchTerm) ||
+        item.file_type.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    setFilteredData(filtered);
+    setModalPage(0); // Reset to first page when search changes
+  }, [allResourcesData, modalSearch]);
+
+  // Handle pagination
+  useEffect(() => {
+    const startIndex = modalPage * modalLimit;
+    const endIndex = startIndex + modalLimit;
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+    setSelectedPeriodData(paginatedData);
+  }, [filteredData, modalPage, modalLimit]);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [overview, combined] = await Promise.all([
+        getDashboard(),
+        getCombinedStats(period, year || undefined)
+      ]);
+      
+      setDashboardData(overview);
+      setCombinedStats(combined);
+    } catch (err: any) {
+      setError(err.message || "Có lỗi xảy ra khi tải dữ liệu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChartClick = async (data: {period: string}, chartType: string) => {
+    if (!data || !data.period) return;
+    
+    try {
+      setLoading(true);
+      const details = await getResourcesDetailsByPeriod(period, year || undefined, data.period);
+      console.log("Check details", details);
+      
+      // Store all data for filtering and pagination
+      setAllResourcesData(details.resources);
+      setSelectedPeriod(`${chartType} - tháng ${data.period}`);
+      
+      // Reset modal states
+      setModalPage(0);
+      setModalSearch("");
+      
+      setDetailModalVisible(true);
+    } catch (err: any) {
+      setError(err.message || "Có lỗi xảy ra khi tải chi tiết");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const handleModalSearch = (value: string) => {
+    setModalSearch(value);
+  };
+
+  const handleModalPageChange = (newLimit: number, newPage: number) => {
+    setModalLimit(newLimit);
+    setModalPage(newPage);
+  };
+
+  const handleModalLimitChange = (newLimit: number) => {
+    setModalLimit(newLimit);
+    setModalPage(0);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      // Search is handled by useEffect, no need to do anything here
+    }
+  };
 
   return (
     <div className="">
       <PageMeta
-        title="React.js Blank Dashboard | TailAdmin - Next.js Admin Dashboard Template"
-        description="This is React.js Blank Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title="Dashboard Báo Cáo | TailAdmin - Dashboard Quản Trị"
+        description="Dashboard thống kê và báo cáo hệ thống"
       />
-      <PageBreadcrumb pageTitle="Quản lý báo cáo" />
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={() => {
-            // handleShowModalAddUser
-          }}
-          className="flex items-center dark:bg-black dark:text-white  gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50">
-          <IoIosAdd size={24} />
-          Thêm
-        </button>
+      <PageBreadcrumb pageTitle="Dashboard Báo Cáo" />
+      
+      {error && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 text-red-700 rounded-lg shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <h4 className="font-semibold">Có lỗi xảy ra</h4>
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="mb-6 p-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg text-center">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-blue-700 font-medium">Đang tải dữ liệu thống kê...</p>
+        </div>
+      )}
+
+      {/* Filter Controls */}
+      <div className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Bộ Lọc Thống Kê</h3>
+        <div className="flex flex-wrap gap-6">
+          <div className="min-w-[150px]">
+            <Label htmlFor="period" className="text-sm font-medium text-gray-700 dark:text-gray-300">Khoảng thời gian</Label>
+            <Select
+              id="period"
+              value={period}
+              onChange={setPeriod}
+              size="large"
+              className="w-full mt-1"
+              options={[
+                { value: "day", label: "📅 Theo ngày" },
+                { value: "month", label: "📊 Theo tháng" },
+                { value: "year", label: "📈 Theo năm" }
+              ]}
+            />
       </div>
-      <ComponentCard title="Danh sách các tài nguyên có trong hệ thống">
-        <div className=" grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div>
-            <Label htmlFor="inputTwo">Tìm kiếm</Label>
+          <div className="min-w-[150px]">
+            <Label htmlFor="year" className="text-sm font-medium text-gray-700 dark:text-gray-300">Năm cụ thể</Label>
             <Input
-              type="text"
-              id="inputTwo"
-              placeholder="Nhập vào tên báo cáo..."
-              value={""}
-              onChange={(e) => {
-                // setSearch(e.target.value)
-              }}
-              onKeyDown={() => {
-                //handleKeyDown;
-              }}
+              id="year"
+              type="number"
+              placeholder="VD: 2024"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              size="large"
+              className="mt-1"
+              prefix="🗓️"
             />
           </div>
         </div>
-        <ReusableTable
-          error={errorData}
-          title="Danh sách số điện thoại"
-          data={data}
-          columns={columns}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          isLoading={loading}
-          onEdit={(item) => {
-            // setType(item);
-            // setOpenModal(!openModal);
-          }}
-          isLoading={loading}
-          onDelete={(id) => handleDelete(String(id))}
-        />
+      </div>
 
-        <Pagination
-          limit={quantity}
-          offset={offset ?? 1}
-          totalPages={1}
-          onPageChange={(limit, newOffset) => {
-            //
-            setQuantity(limit);
-            setOffset(newOffset);
-          }}
-          onLimitChange={(newLimit) => {
-            setQuantity(newLimit);
-            setOffset(0); // Reset offset về 0 khi đổi limit
-          }}
-        />
-      </ComponentCard>
+      {/* Overview Statistics */}
+      {dashboardData && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <Statistic
+                  title={<span className="text-green-700 font-medium">👥 Tổng Người Dùng</span>}
+                  value={dashboardData.total_users}
+                  valueStyle={{ color: '#15803d', fontSize: '24px', fontWeight: 'bold' }}
+                />
+              </div>
+              <div className="text-3xl text-green-500">👥</div>
+            </div>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <Statistic
+                  title={<span className="text-blue-700 font-medium">📁 Tổng Tài Nguyên</span>}
+                  value={dashboardData.total_resources}
+                  valueStyle={{ color: '#1d4ed8', fontSize: '24px', fontWeight: 'bold' }}
+                />
+              </div>
+              <div className="text-3xl text-blue-500">📁</div>
+            </div>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <Statistic
+                  title={<span className="text-red-700 font-medium">⬇️ Tổng Lượt Tải</span>}
+                  value={dashboardData.total_downloads}
+                  valueStyle={{ color: '#dc2626', fontSize: '24px', fontWeight: 'bold' }}
+                />
+              </div>
+              <div className="text-3xl text-red-500">⬇️</div>
+            </div>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <Statistic
+                  title={<span className="text-purple-700 font-medium">📚 Bộ Sưu Tập</span>}
+                  value={dashboardData.total_collections}
+                  valueStyle={{ color: '#7c3aed', fontSize: '24px', fontWeight: 'bold' }}
+                />
+              </div>
+              <div className="text-3xl text-purple-500">📚</div>
+            </div>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <Statistic
+                  title={<span className="text-orange-700 font-medium">🏷️ Tổng Tags</span>}
+                  value={dashboardData.total_tags}
+                  valueStyle={{ color: '#ea580c', fontSize: '24px', fontWeight: 'bold' }}
+                />
+              </div>
+              <div className="text-3xl text-orange-500">🏷️</div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Combined Stats Chart */}
+      {combinedStats && (
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <span>📊</span>
+                Xu Hướng Phát Triển Theo Thời Gian
+              </h3>
+              <p className="text-indigo-100 text-sm mt-1">Biểu đồ thể hiện sự tăng trưởng của tài nguyên qua các kỳ</p>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart 
+                  data={combinedStats.resources} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  onClick={(data: any) => {
+                    if (data && data.activeLabel) {
+                      handleChartClick({period: data.activeLabel}, "Tài nguyên");
+                    }
+                  }}
+                >
+                  <defs>
+                    <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" strokeWidth={1} />
+                  <XAxis 
+                    dataKey="period" 
+                    tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                    axisLine={{ stroke: '#e2e8f0', strokeWidth: 1 }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                    axisLine={{ stroke: '#e2e8f0', strokeWidth: 1 }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: 'none',
+                      borderRadius: '12px',
+                      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                      padding: '12px 16px'
+                    }}
+                    labelStyle={{ color: '#374151', fontWeight: '600' }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    iconType="circle"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke={CHART_COLORS.primary}
+                    strokeWidth={4}
+                    dot={{ fill: CHART_COLORS.primary, strokeWidth: 0, r: 8 }}
+                    activeDot={{ 
+                      r: 12, 
+                      fill: CHART_COLORS.primary,
+                      stroke: 'white',
+                      strokeWidth: 3
+                    }}
+                    name="Số lượng tài nguyên"
+                    style={{ cursor: 'pointer' }}
+                    fill="url(#colorGradient)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                  <span>💡 <strong>Mẹo:</strong> Click vào các điểm trên đường biểu đồ để xem danh sách chi tiết tài nguyên</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Resources Stats */}
+        {combinedStats?.resources && (
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>📁</span>
+                Thống Kê Tài Nguyên
+              </h3>
+              <p className="text-blue-100 text-sm mt-1">Số lượng tài nguyên được tạo theo từng kỳ</p>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart 
+                  data={combinedStats.resources} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  onClick={(data: any) => {
+                    if (data && data.activeLabel) {
+                      handleChartClick({period: data.activeLabel}, "Tài nguyên");
+                    }
+                  }}
+                >
+                  <defs>
+                    <linearGradient id="resourceGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={CHART_COLORS.info} />
+                      <stop offset="100%" stopColor={CHART_COLORS.primary} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="period" 
+                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: 'none',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                      padding: '12px'
+                    }}
+                    labelStyle={{ color: '#374151', fontWeight: '600' }}
+                    cursor={{ fill: 'rgba(99, 102, 241, 0.1)' }}
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    fill="url(#resourceGradient)"
+                    radius={[6, 6, 0, 0]}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 bg-blue-50 rounded-lg p-3 text-center">
+                <span className="text-sm text-blue-700">🖱️Biểu đồ thể hiện số lượng tài nguyên được tạo theo từng kỳ</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Downloads Stats */}
+        {combinedStats?.downloads && (
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>📈</span>
+                Thống Kê Lượt Tải
+              </h3>
+              <p className="text-green-100 text-sm mt-1">Số lượng lượt tải xuống theo từng kỳ</p>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={combinedStats.downloads} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="downloadGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={CHART_COLORS.success} />
+                      <stop offset="100%" stopColor="#059669" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="period" 
+                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                    axisLine={{ stroke: '#e2e8f0' }}
+                    tickLine={{ stroke: '#e2e8f0' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: 'none',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                      padding: '12px'
+                    }}
+                    labelStyle={{ color: '#374151', fontWeight: '600' }}
+                    cursor={{ fill: 'rgba(16, 185, 129, 0.1)' }}
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    fill="url(#downloadGradient)"
+                    radius={[6, 6, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-4 bg-green-50 rounded-lg p-3 text-center">
+                <span className="text-sm text-green-700">📊 Biểu đồ thể hiện xu hướng tải xuống</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+
+      {/* Detail Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <span className="text-xl">📋</span>
+            <span className="text-lg font-semibold text-gray-800">Chi tiết {selectedPeriod}</span>
+            <span className="text-sm text-gray-500 ml-2">
+              ({filteredData.length} tài nguyên)
+            </span>
+          </div>
+        }
+        open={detailModalVisible}
+        onCancel={() => {
+          setDetailModalVisible(false);
+          setModalSearch("");
+          setModalPage(0);
+          setAllResourcesData([]);
+          setFilteredData([]);
+        }}
+        footer={null}
+        width={1200}
+        className="top-4"
+        styles={{
+          body: { maxHeight: '80vh', overflowY: 'auto' }
+        }}
+      >
+        <div className="space-y-4">
+          {/* Search Section */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Label htmlFor="modalSearch" className="text-sm font-medium text-gray-700">
+                  🔍 Tìm kiếm tài nguyên
+                </Label>
+                <Input
+                  id="modalSearch"
+                  placeholder="Tìm theo tiêu đề, mô tả, danh mục, người tạo, loại file..."
+                  value={modalSearch}
+                  onChange={(e) => handleModalSearch(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  size="large"
+                  className="mt-1"
+                  allowClear
+                />
+              </div>
+              <div className="text-sm text-gray-500 mt-6">
+                Tìm thấy: <strong>{filteredData.length}</strong> / {allResourcesData.length} tài nguyên
+              </div>
+            </div>
+          </div>
+
+          {/* Table Section */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <ReusableTable
+              error=""
+              title="📊 Danh sách tài nguyên chi tiết"
+              data={selectedPeriodData}
+              columns={resourceDetailColumns}
+              isLoading={loading}
+            />
+            
+            {/* Pagination */}
+            {filteredData.length > 0 && (
+              <div className="mt-4">
+                <Pagination
+                  limit={modalLimit}
+                  offset={modalPage}
+                  totalPages={Math.ceil(filteredData.length / modalLimit)}
+                  onPageChange={handleModalPageChange}
+                  onLimitChange={handleModalLimitChange}
+                />
+              </div>
+            )}
+
+            {/* No Data Message */}
+            {filteredData.length === 0 && !loading && allResourcesData.length > 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">🔍</div>
+                <p className="text-lg font-medium">Không tìm thấy tài nguyên nào</p>
+                <p className="text-sm">Thử thay đổi từ khóa tìm kiếm</p>
+              </div>
+            )}
+
+            {allResourcesData.length === 0 && !loading && (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">📭</div>
+                <p>Không có dữ liệu trong khoảng thời gian này</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

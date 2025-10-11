@@ -25,6 +25,9 @@ import ManageReport from "./components/manage_report";
 import ManageTag from "./components/manage_tag";
 import ManageCategory from "./components/manage_category";
 import ManageCollection from "./components/manage_collection";
+import ManagePayment from "./components/manage_payment";
+import PaymentDashboard from "./components/payment_dashboard";
+import ManageRenewals from "./components/manage_renewals";
 export default function App() {
   return (
     <>
@@ -41,6 +44,11 @@ export default function App() {
             <Route path="/manage-tag" element={<ManageTag />} />
             <Route path="/manage-category" element={<ManageCategory />} />
             <Route path="/manage-collection" element={<ManageCollection />} />
+            
+            {/* Payment Routes */}
+            <Route path="/payment-dashboard" element={<PaymentDashboard />} />
+            <Route path="/manage-payment" element={<ManagePayment />} />
+            <Route path="/manage-renewals" element={<ManageRenewals />} />
             {/* Others Page */}
             {/* <Route path="/profile" element={<UserProfiles />} />
             {/* Others Page */}
