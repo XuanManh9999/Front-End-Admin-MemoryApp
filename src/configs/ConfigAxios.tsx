@@ -1,7 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 const configApi = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: "https://codezen.io.vn",
 });
 
 configApi.interceptors.request.use(
@@ -31,7 +31,7 @@ configApi.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          "http://localhost:3000/admin/auth/refresh-token",
+          "https://codezen.io.vn/admin/auth/refresh-token",
           {},
           {
             headers: {
@@ -54,7 +54,7 @@ configApi.interceptors.response.use(
         return configApi(originalRequest);
       } catch (refreshErr: any) {
         const response = (refreshErr as any)?.response;
-        console.log("response", response)
+        console.log("response", response);
         if (response?.status === 401) {
           alert("Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.");
           document.location.href = "/signin";
