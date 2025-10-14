@@ -31,11 +31,7 @@ configApi.interceptors.response.use(
 
       try {
         const res = await axios.post(
-<<<<<<< HEAD
           "https://codezen.io.vn/admin/auth/refresh-token",
-=======
-          "https://backend-menory-app.vercel.app/admin/auth/refresh-token",
->>>>>>> 7f54a138569209256c6e76f5425dbbd27bae5a1d
           {},
           {
             headers: {
