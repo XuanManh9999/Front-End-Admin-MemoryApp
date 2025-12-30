@@ -218,10 +218,15 @@ export const updateResource = async (id: number, resource: ResourceUpdate) => {
     }
 
     // Log FormData để debug
-    console.log('Update FormData entries:');
+    console.log('=== FormData entries for UPDATE RESOURCE ===');
     for (let pair of formData.entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
+      if (pair[1] instanceof File) {
+        console.log(`${pair[0]}: File - ${pair[1].name} (${pair[1].size} bytes, type: ${pair[1].type})`);
+      } else {
+        console.log(`${pair[0]}: ${pair[1]}`);
+      }
     }
+    console.log('=== End FormData entries ===');
 
     const response = await configApi.put(`/admin/manage-resource/${id}`, formData, {
       headers: { 

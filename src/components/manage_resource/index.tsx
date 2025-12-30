@@ -97,6 +97,10 @@ export default function ManageResource() {
   // File upload states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string>("");
+  
+  // File upload states for edit modal
+  const [selectedFileEdit, setSelectedFileEdit] = useState<File | null>(null);
+  const [previewImageEdit, setPreviewImageEdit] = useState<string>("");
 
   // Set default URL params
   useEffect(() => {
@@ -565,8 +569,20 @@ export default function ManageResource() {
 
   // Handle edit resource
   const onEdit = async (item: any) => {
+    // Reset file states for edit modal
+    setSelectedFileEdit(null);
+    setPreviewImageEdit("");
+    
     const uploadProps = {
       beforeUpload: (file: File) => {
+        console.log("=== EDIT MODAL - BEFORE UPLOAD ===");
+        console.log("File details:", {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        });
+        
         // Validate file size (max 50MB)
         const isLt50M = file.size / 1024 / 1024 < 50;
         if (!isLt50M) {
@@ -583,18 +599,54 @@ export default function ManageResource() {
           return Upload.LIST_IGNORE;
         }
         
-        message.success(`Đã chọn file mới: ${file.name}`);
+        // Lưu file vào state cho edit modal
+        setSelectedFileEdit(file);
+        
+        // Tạo preview nếu là ảnh
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            setPreviewImageEdit(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+        
+        message.success(`✅ Đã chọn file mới: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log("File selected for edit:", file.name);
+        console.log("=== END EDIT MODAL - BEFORE UPLOAD ===");
         return false; // Prevent automatic upload
       },
       onChange: (info: any) => {
+        console.log("=== EDIT MODAL - UPLOAD CHANGE ===");
+        console.log("Info:", info);
+        console.log("FileList length:", info.fileList.length);
+        
         if (info.fileList.length > 0) {
           const file = info.fileList[0];
-          if (file.status === 'error') {
-            message.error('Lỗi khi chọn file!');
+          console.log("Current file in edit list:", {
+            uid: file.uid,
+            name: file.name,
+            status: file.status,
+            hasOriginFileObj: !!file.originFileObj,
+            originFileObjType: typeof file.originFileObj
+          });
+          
+          if (file.status !== 'error') {
+            console.log("Edit file ready for upload");
           }
+        } else {
+          console.log("No files in edit list");
+          // Reset state khi không có file
+          setSelectedFileEdit(null);
+          setPreviewImageEdit("");
         }
+        console.log("=== END EDIT MODAL - UPLOAD CHANGE ===");
       },
       accept: ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.avi,.mov,.mp3,.wav,.zip,.rar,.7z",
+      maxCount: 1,
+      showUploadList: true,
+      listType: "picture-card",
+      multiple: false,
     };
 
     setFormFields([
@@ -664,11 +716,23 @@ export default function ManageResource() {
         initialValue: item.detail,
       },
       {
+        name: "current_file_info",
+        label: "File hiện tại",
+        type: "textarea",
+        initialValue: [
+          `📁 File: ${item.file_url ? item.file_url.split('/').pop() : 'Không có'}`,
+          `🔗 URL: ${item.file_url || 'Chưa có'}`,
+          `📊 Loại: ${item.file_type || 'Không xác định'}`,
+          `💾 Kích thước: ${item.file_size ? `${(item.file_size / 1024 / 1024).toFixed(2)}MB` : 'Không xác định'}`
+        ].join("\n"),
+        disabled: true,
+      },
+      {
         name: "file",
-        label: "Tệp tin (để trống nếu không đổi)",
+        label: "Thay đổi file (để trống nếu không đổi)",
         type: "upload",
         uploadProps,
-        previewImage: item.file_url,
+        previewImage: previewImageEdit || item.file_url,
       },
       {
         name: "current_tags",
@@ -715,10 +779,12 @@ export default function ManageResource() {
   };
 
   const handleUpdateResource = async (data: any) => {
+    console.log("=== HANDLE UPDATE RESOURCE START ===");
+    console.log("Complete form data:", data);
+    console.log("Selected file from edit state:", selectedFileEdit);
+    
     setLoading(true);
     try {
-      console.log("Update form data received:", data);
-
       const resourceData: ResourceUpdate = {
         title: data.title,
         description: data.description,
@@ -733,34 +799,71 @@ export default function ManageResource() {
         resourceData.tag_ids = data.tag_ids;
       }
 
-      // Xử lý file nếu có - Antd Upload trả về fileList
-      if (data.file && Array.isArray(data.file) && data.file.length > 0) {
-        const fileItem = data.file[0];
-        const fileToUpload = fileItem.originFileObj || fileItem.file || fileItem;
+      // QUAN TRỌNG: Sử dụng selectedFileEdit thay vì data.file
+      if (selectedFileEdit && selectedFileEdit instanceof File) {
+        console.log("=== DEBUG FILE UPDATE ===");
+        console.log("File from state to update:", {
+          file: selectedFileEdit,
+          isFile: selectedFileEdit instanceof File,
+          name: selectedFileEdit.name,
+          size: selectedFileEdit.size,
+          type: selectedFileEdit.type
+        });
+        console.log("=== END DEBUG FILE UPDATE ===");
         
-        if (fileToUpload && fileToUpload instanceof File) {
-          console.log("File to update:", fileToUpload);
-          resourceData.file = fileToUpload;
-        }
+        resourceData.file = selectedFileEdit;
+      } else {
+        console.log("No new file selected for update - keeping existing file");
       }
 
-      console.log("Resource update data:", resourceData);
+      console.log("=== FINAL UPDATE DATA ===");
+      console.log("Resource update data:", {
+        ...resourceData,
+        file: resourceData.file ? {
+          name: resourceData.file.name,
+          size: resourceData.file.size,
+          type: resourceData.file.type,
+          isFile: resourceData.file instanceof File
+        } : 'NO FILE UPDATE'
+      });
+      console.log("=== CALLING UPDATE RESOURCE ===");
 
       const response = await updateResource(data.id, resourceData);
       
-      if (response?.statusCode === 200 || response?.data?.success) {
+      console.log("Update resource response:", response);
+      
+      if (response?.statusCode === 200 || response?.data?.success || 
+          response?.message?.includes("thành công")) {
+        
         // Thông báo đặc biệt khi thay đổi trạng thái
         if (currentEditItem && data.status && data.status !== currentEditItem.status) {
           const statusText = data.status === 'publish' ? 'đã được phê duyệt và xuất bản' : 'đã được chuyển về chờ duyệt';
           message.success(`Tài nguyên "${data.title}" ${statusText}!`);
+        } else if (selectedFileEdit) {
+          message.success(`Cập nhật tài nguyên và file "${selectedFileEdit.name}" thành công!`);
         } else {
           message.success(response?.message || "Cập nhật tài nguyên thành công");
         }
+        
         fetchResources();
         setOpenModal(false);
         setCurrentEditItem(null);
+        // Reset edit file states
+        setSelectedFileEdit(null);
+        setPreviewImageEdit("");
       } else {
-        message.error(response?.message || "Cập nhật tài nguyên thất bại. Vui lòng thử lại!");
+        console.error("Update resource failed:", response);
+        
+        let errorMessage = "Cập nhật tài nguyên thất bại";
+        if (response?.message) {
+          errorMessage = response.message;
+        } else if (response?.error) {
+          errorMessage = response.error;
+        } else if (response?.data?.error) {
+          errorMessage = response.data.error;
+        }
+        
+        message.error(errorMessage);
       }
     } catch (error: any) {
       console.error("Error updating resource:", error);
@@ -1218,6 +1321,9 @@ export default function ManageResource() {
         onCancel={() => {
           setOpenModal(false);
           setCurrentEditItem(null);
+          // Reset edit file states
+          setSelectedFileEdit(null);
+          setPreviewImageEdit("");
         }}
         formFields={formFields}
       />
